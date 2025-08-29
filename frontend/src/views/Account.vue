@@ -40,6 +40,7 @@
   import { useRouter } from 'vue-router'
   import { inject, onMounted, ref } from 'vue'
   import useUserStore from '../stores/UserStore'
+  import { trackEvent } from "../services/ahoy.js";
   
   export default {
     setup() {
@@ -68,6 +69,7 @@
             }
           }
           const response = await userStore.update(data)
+          trackEvent("Updated account", {previous_email: userStore.user.email, new_email: email.value})
           showSnackbar([response.data.message], 'success')
           router.push({ name: 'Dashboard' })
         } catch (error) {
