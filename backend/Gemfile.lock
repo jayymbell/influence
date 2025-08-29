@@ -111,6 +111,8 @@ GEM
       rdoc (>= 4.0.0)
       reline (>= 0.4.2)
     json (2.13.2)
+    jsonapi-serializer (2.2.0)
+      activesupport (>= 4.2)
     kamal (2.7.0)
       activesupport (>= 7.0)
       base64 (~> 0.2)
@@ -328,6 +330,7 @@ DEPENDENCIES
   bootsnap
   brakeman
   debug
+  jsonapi-serializer (~> 2.2)
   kamal
   pg (~> 1.1)
   puma (>= 5.0)
