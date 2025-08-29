@@ -24,7 +24,14 @@
           type="password"
           required
         ></v-text-field>
-        <v-btn type="submit">Update</v-btn>
+        <v-row>
+                <v-col cols="7">
+
+        </v-col>
+        <v-col  class="text-right">
+          <v-btn type="submit" block>Submit</v-btn>
+        </v-col>
+      </v-row>
       </v-form>
     </v-container>
   </template>
