@@ -2,6 +2,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
   respond_to :json
 
   def update
+    authenticate_user! 
     self.resource = resource_class.to_adapter.get!(send(:"current_#{resource_name}").to_key)
     resource_updated = update_resource(resource, user_params)
     yield resource if block_given?
