@@ -1,6 +1,7 @@
 import {computed, ref} from 'vue'
 import {defineStore} from 'pinia'
 import api from '../services/api'
+import { trackEvent } from "../services/ahoy.js";
 
 
 const useUserStore = defineStore("UserStore", () => {
@@ -26,7 +27,7 @@ const useUserStore = defineStore("UserStore", () => {
     }
 
     const logout = async () => {
-
+        trackEvent("Logged out", {})
         bearerToken.value = null
         user.value = null
         localStorage.removeItem('bearerToken')

@@ -30,6 +30,7 @@
 import useUserStore from '../stores/UserStore'
 import { useRouter } from 'vue-router'
 import { inject } from 'vue'
+import { trackEvent } from "../services/ahoy.js";
 
 export default {
   data() {
@@ -53,9 +54,11 @@ export default {
           return
         }
         const response = await userStore.login(data)
+        trackEvent("Logged in", {});
         this.showSnackbar([response.data.message], 'success')
         this.router.push({ name: 'Dashboard' })
       } catch (error) {
+        console.log(error)
         const e = error.response.data.error || ['An unknown error occurred']
         this.showSnackbar([e], 'error')
       }
