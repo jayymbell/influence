@@ -1,5 +1,5 @@
 <template>
-    <v-container>
+    <v-container style="margin-top: 25%;">
       <h1>Reset Password</h1>
       <v-form @submit.prevent="requestPasswordReset">
         <v-text-field v-model="email" label="Email" required></v-text-field>

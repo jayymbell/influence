@@ -1,5 +1,5 @@
 <template>
-  <v-container>
+  <v-container style="margin-top: 25%;">
     <h1>Log In</h1>
     <v-form @submit.prevent="handleLogin">
       <v-text-field

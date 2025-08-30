@@ -1,5 +1,5 @@
 <template>
-  <v-container>
+  <v-container style="margin-top: 25%;">
     <h1>Sign Up</h1>
     <v-form @submit.prevent="handleSignup">
       <v-text-field
