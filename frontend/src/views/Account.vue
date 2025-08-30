@@ -1,18 +1,21 @@
 <template>
     <v-container>
-      <div v-if="mode == 'view'" style="width: 500px;">
+      <div v-if="mode == 'view'">
         <h1>Account</h1>
         {{ userStore.user.email }}
         <br>
         member since {{ est }}
         <br>
-        <span v-if="roles.length">currently serves as {{roles}}</span>
+        <span v-if="roles.length">{{roles}}</span>
         <br>
         <br>
-        <a @click="mode = 'edit_email'">change email</a> | <a @click="mode = 'edit_password'">change password</a>
+        <a @click="mode = 'change_email'">change email</a>
+        <br>
+        <a @click="mode = 'change_password'">change password</a>
       </div>
       <div v-if="mode != 'view'">
-        <h1>{{form_title}}</h1>
+        <h1>Account</h1>
+        <h2>{{form_title}}</h2>
           <UpdateAccount :mode="mode">
               <template #actions>
                   <a @click="mode = 'view'">Cancel</a>

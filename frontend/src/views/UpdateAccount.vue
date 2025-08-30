@@ -1,20 +1,20 @@
 <template>
       <v-form @submit.prevent="updateAccount">
         <v-text-field
-            v-if="mode == 'edit_email'"
+            v-if="mode == 'change_email'"
           v-model="email"
           label="Email"
           type="email"
           required
         ></v-text-field>
         <v-text-field
-        v-if="mode == 'edit_password'"
+        v-if="mode == 'change_password'"
           v-model="password"
           label="Password"
           type="password"
         ></v-text-field>
         <v-text-field
-        v-if="mode == 'edit_password'"
+        v-if="mode == 'change_password'"
           v-model="password_confirmation"
           label="Confirm Password"
           type="password"
@@ -74,7 +74,7 @@ export default {
         trackEvent("Updated account", { previous_email: userStore.user.email, new_email: email.value })
         await userStore.logout()
         router.push('/login')
-        if( props.mode == "edit_email") {
+        if( props.mode == "change_email") {
           showSnackbar(['A message with a confirmation link has been sent to your new email address. Please follow the link to re-activate your account.'], 'success')
           return
         }
