@@ -12,7 +12,7 @@ Rails.application.routes.draw do
   }
 
   namespace :users do
-    resources :events, only: [:create]
+    resources :events, only: [:create, :index]
   end
 
   resources :roles
