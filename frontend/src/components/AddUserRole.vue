@@ -54,7 +54,7 @@ export default {
 
     const availableUsers = computed(() => {
         const idsToRemove = new Set(props.role.users.map(item => item.id));
-        return allUsers.value.filter(obj => !idsToRemove.has(obj.id));
+        return allUsers.value.filter(obj => !idsToRemove.has(obj.id) && !obj.discarded_at);
     });
 
     const filteredUsers = computed(() => {
