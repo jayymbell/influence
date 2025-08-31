@@ -13,6 +13,11 @@ const useUserStore = defineStore("UserStore", () => {
     // getters
     const isLoggedIn = computed(() => bearerToken.value !== null)
 
+    const hasRole = (roleName) => {
+        if (!user.value || !user.value.roles) return false;
+        return user.value.roles.map(item => item.name).includes(roleName);
+    }
+
     //actions
 
     const login = async (data) => {
@@ -47,7 +52,9 @@ const useUserStore = defineStore("UserStore", () => {
     }
     
 
-    return {user, bearerToken, isLoggedIn, login, logout, update}
+    
+
+    return {user, bearerToken, isLoggedIn, login, logout, update, hasRole}
 })
 
 export default useUserStore
