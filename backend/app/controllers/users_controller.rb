@@ -10,4 +10,13 @@ class UsersController < ApplicationController
         users: @users
     }, status: :ok 
   end
+
+  def show
+    @user = User.find(params[:id])
+    render json: {
+      status: 200, 
+      message: 'User found.',
+      user: @user
+  }, status: :ok 
+  end
 end
