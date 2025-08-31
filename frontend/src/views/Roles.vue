@@ -8,9 +8,9 @@
                     <v-col>
                         {{ role.name }} 
                     </v-col>
-                    <v-col>
-                        <a style="float: right;" @click="deleteRole(role)">Delete</a>
-                        <a style="float: right; margin-right: 10px;" @click="fetchRole(role)">Open</a>
+                    <v-col class="text-right">
+                        <a style="margin-right: 5px;" @click="fetchRole(role)">Open</a> | 
+                        <a style="margin-right: 5px; margin-left: 5px;" @click="deleteRole(role)">Delete</a>
                     </v-col>
                 </v-row>
             </v-card>
