@@ -16,7 +16,7 @@ class UsersController < ApplicationController
     render json: {
       status: 200, 
       message: 'User found.',
-      user: @user
+      user: UserSerializer.new(@user).serializable_hash[:data][:attributes]
   }, status: :ok 
   end
 end
