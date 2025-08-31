@@ -2,7 +2,13 @@
     <v-container>
         <h1>Users</h1>
         <div v-if="!user" style="width: 500px;">
-            <v-card v-for="user in users" :key="user.id"  class="pa-3 mt-3" outlined>
+                    <v-text-field
+            v-model="searchEmail"
+            label="Search by Email"
+            @input="filterUsers"
+            clearable
+        />
+            <v-card v-for="user in filteredUsers" :key="user.id"  class="pa-3 mt-3" outlined>
                 <v-row>
                     <v-col>
                         {{ user.email }} 
@@ -40,10 +46,13 @@ export default {
   setup() {
     const users = ref('')
     const user = ref('')
+    const searchEmail = ref('')
+    const filteredUsers = ref('')
 
     const fetchUsers = async() => {
         const response = await api.get('/users');
         users.value  = response.data.users
+        filteredUsers.value = response.data.users
     }
 
     const fetchUser = async(u) => {
@@ -51,10 +60,17 @@ export default {
         user.value  = response.data.user
     }
 
+    const filterUsers = () => {
+      const email = searchEmail.value.toLowerCase();
+      filteredUsers.value = users.value.filter(user =>
+        user.email.toLowerCase().includes(email)
+      );
+    }
+
     onMounted(() => {
       fetchUsers()
     })
-    return {users, user, fetchUser};
+    return {users, user, searchEmail, filteredUsers, fetchUser, filterUsers};
   }
 }
 </script>
