@@ -54,7 +54,7 @@ export default {
 
     const availableUsers = computed(() => {
         const idsToRemove = new Set(props.role.users.map(item => item.id));
-        return allUsers.value.filter(obj => !idsToRemove.has(obj.id));
+        return allUsers.value.filter(obj => !idsToRemove.has(obj.id) && !obj.discarded_at);
     });
 
     const filteredUsers = computed(() => {
@@ -69,7 +69,7 @@ export default {
         const userIds = props.role.users.map(item => item.id)
         userIds.push(selectedUser.value);
         await api.patch('/roles/'+props.role.id, { role: {user_ids: userIds }});
-        trackEvent("Added user role", {user_id: selectedUser.value, role_id: props.role.id});
+        trackEvent("added user role", {user_id: selectedUser.value, role_id: props.role.id});
         showSnackbar(["User role added."], 'success')
         emit('user-roles-updated');
         selectedUser.value = null;

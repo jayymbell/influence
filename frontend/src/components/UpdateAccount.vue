@@ -39,14 +39,14 @@
   <script>
 import { useRouter } from 'vue-router'
 import { inject, onMounted, ref } from 'vue'
-import useUserStore from '../stores/UserStore'
+import useUserStore from '../stores/UserStore.js'
 import { trackEvent } from "../services/ahoy.js";
 
 export default {
   props: {
     mode: String
   },
-  setup(props) {  // ✅ emit comes from the second argument
+  setup(props) {
     const router = useRouter()
     const showSnackbar = inject('showSnackbar')
     const userStore = useUserStore()
@@ -71,7 +71,7 @@ export default {
           }
         }
         const response = await userStore.update(data)
-        trackEvent("Updated account", { previous_email: userStore.user.email, new_email: email.value })
+        trackEvent("updated account", { previous_email: userStore.user.email, new_email: email.value })
         await userStore.logout()
         router.push('/login')
         if( props.mode == "change_email") {
@@ -82,7 +82,6 @@ export default {
             showSnackbar(['Please log back in with your new password.'], 'success')
         }
       } catch (error) {
-        console.log(error)
         const errors = error.response?.data?.errors || ['An unknown error occurred']
         showSnackbar(errors, 'error')
       }

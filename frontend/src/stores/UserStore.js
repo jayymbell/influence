@@ -37,7 +37,7 @@ const useUserStore = defineStore("UserStore", () => {
     }
 
     const logout = async () => {
-        trackEvent("Logged out", {})
+        trackEvent("logged out", {})
         bearerToken.value = null
         user.value = null
         localStorage.removeItem('bearerToken')

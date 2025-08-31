@@ -3,14 +3,15 @@
         <h1>Roles</h1>
         <div v-if="!role">
             <AddRole @add-role="onAddRole" />
+            <v-divider class="my-4"></v-divider>
             <v-card v-for="role in roles" :key="role.id"  class="pa-3 mt-3" outlined>
                 <v-row>
                     <v-col>
                         {{ role.name }} 
                     </v-col>
-                    <v-col>
-                        <a style="float: right;" @click="deleteRole(role)">Delete</a>
-                        <a style="float: right; margin-right: 10px;" @click="fetchRole(role)">Open</a>
+                    <v-col class="text-right">
+                        <a style="margin-right: 5px;" @click="fetchRole(role)">Open</a> | 
+                        <a style="margin-right: 5px; margin-left: 5px;" @click="deleteRole(role)">Delete</a>
                     </v-col>
                 </v-row>
             </v-card>
@@ -19,13 +20,19 @@
         <h2>{{ role_name }}</h2>
         <h3>Users</h3>
         <AddUserRole :role="role" @user-roles-updated="fetchRole(role)"/>
+        <v-divider class="my-4"></v-divider>
         <v-card v-for="user in role.users" :key="user.id" class="pa-3 mt-3" outlined>
         <v-row>
-            <v-col>
+            <v-col cols="8">
                 {{ user.email }}
+            <v-chip
+                v-if="user.discarded_at"
+                label="Inactive"
+                style="float: right;"
+            >Inactive</v-chip>
             </v-col>
-            <v-col>
-                <a style="float: right;" @click="removeUserRole(user.id)">Delete</a>
+            <v-col class="text-right">
+                <a @click="removeUserRole(user.id)">Delete</a>
             </v-col>
         </v-row>
         </v-card>
@@ -65,7 +72,6 @@ export default {
                 const response = await api.get('/roles')
                 roles.value = response.data.roles
             } catch (error) {
-                console.log(error)
                 const e = error.response.data.error || ['An unknown error occurred']
                 showSnackbar([e], 'error')
             }
@@ -74,11 +80,10 @@ export default {
         const onAddRole = async (roleName) => {
             try {
                 const response = await api.post('/roles', { name: roleName })
-                trackEvent("Created role", {role_id: response.data.role.id});
+                trackEvent("created role", {role_id: response.data.role.id});
                 showSnackbar(['Role created'], 'success')
                 fetchRoles()
             } catch (error) {
-                console.log(error)
                 const errors = error.response.data.errors || ['An unknown error occurred']
                 showSnackbar(errors, 'error')
             }
@@ -89,7 +94,6 @@ export default {
                 const response = await api.get('/roles/' + r.id)
                 role.value = response.data
             } catch (error) {
-                console.log(error)
                 const e = error.response.data.error || ['An unknown error occurred']
                 showSnackbar([e], 'error')
             }
@@ -98,11 +102,10 @@ export default {
                 const deleteRole = async (r) => {
             try {
                 const response = await api.delete('/roles/' + r.id)
-                trackEvent("Deleted role", {role_id: r.id});
+                trackEvent("deleted role", {role_id: r.id});
                 fetchRoles()
                 showSnackbar(['Role deleted'], 'success')
             } catch (error) {
-                console.log(error)
                 const e = error.response.data.error || ['An unknown error occurred']
                 showSnackbar([e], 'error')
             }
@@ -113,11 +116,10 @@ export default {
                 const userIds = role.value.users.map(item => item.id)
                 const filteredUserIds = userIds.filter(id => id !== parseInt(userId));
                 await api.patch('/roles/'+role.value.id, { role: {user_ids: filteredUserIds }});
-                trackEvent("Removed user role", {user_id: userId, role_id: role.value.id});
+                trackEvent("removed user role", {user_id: userId, role_id: role.value.id});
                 fetchRole(role.value)
                 showSnackbar(['User role removed'], 'success')
             } catch (error) {
-                console.log(error)
                 const errors = error.response?.data?.errors || ['An unknown error occurred']
                 showSnackbar(errors, 'error')
             }

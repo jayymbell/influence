@@ -59,7 +59,6 @@ export default {
         this.showSnackbar([response.data.message], 'success')
         this.router.push({ name: 'Login' })
       } catch (error) {
-        console.log(error)
         const errors = error.response.data.errors || ['An unknown error occurred']
         this.showSnackbar(errors, 'error')
       }

@@ -9,6 +9,7 @@ import PasswordEdit from '../views/PasswordEdit.vue'
 import PasswordReset from '../views/PasswordReset.vue'
 import Account from '../views/Account.vue'
 import Roles from '../views/Roles.vue'
+import Users from '../views/Users.vue'
 
 const routes = [
   {
@@ -82,6 +83,19 @@ const routes = [
     path: '/roles',
     name: 'Roles',
     component: Roles,
+    beforeEnter: (to, from, next) => {
+      const userStore = useUserStore()
+      if (userStore.isLoggedIn && userStore.hasRole('admin')) {
+        next()
+      } else {
+        next({ name: 'Dashboard' })
+      }
+    }
+  },
+  {
+    path: '/users',
+    name: 'Users',
+    component: Users,
     beforeEnter: (to, from, next) => {
       const userStore = useUserStore()
       if (userStore.isLoggedIn && userStore.hasRole('admin')) {
