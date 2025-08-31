@@ -15,6 +15,19 @@
         </div>
         <div v-else style="width: 500px;">
             <h2>{{ user.email }}</h2>
+            <h3>Roles</h3>
+            <v-card v-for="role in user.roles" :key="role.id" class="pa-3 mt-3" outlined>
+                <v-row>
+                    <v-col>
+                        {{ role.name }}
+                    </v-col>
+                </v-row>
+            </v-card>
+            <span v-if="!user.roles.length">
+                None found.
+            </span>
+            <br/>
+            <br/>
             <a style="margin-right: 10px;" @click="user = ''">Close</a>
         </div>
     </v-container>
