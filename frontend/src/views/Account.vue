@@ -1,7 +1,9 @@
 <template>
     <v-container>
+      <h1>Account</h1>
       <div v-if="mode == 'view'">
-        <h1>Account</h1>
+        <h2>User</h2>
+        <v-card class="pa-3 mt-3" outlined style="width: 500px;">
         {{ userStore.user.email }}
         <br>
         member since {{ est }}
@@ -9,12 +11,10 @@
         <span v-if="roles.length">{{roles}}</span>
         <br>
         <br>
-        <a @click="mode = 'change_email'">change email</a>
-        <br>
-        <a @click="mode = 'change_password'">change password</a>
+        <a @click="mode = 'change_email'">change email</a> | <a @click="mode = 'change_password'">change password</a>
+        </v-card>
       </div>
       <div v-if="mode != 'view'">
-        <h1>Account</h1>
         <h2>{{form_title}}</h2>
           <UpdateAccount :mode="mode">
               <template #actions>
@@ -56,7 +56,7 @@
 
       const roles = computed({
         get() {
-          return userStore.user.roles.join(', ')
+          return userStore.user.roles.map(item => item.name).join(', ')
         },
       });
   
