@@ -3,6 +3,7 @@
         <h1>Roles</h1>
         <div v-if="!role">
             <AddRole @add-role="onAddRole" />
+            <v-divider class="my-4"></v-divider>
             <v-card v-for="role in roles" :key="role.id"  class="pa-3 mt-3" outlined>
                 <v-row>
                     <v-col>
@@ -19,13 +20,19 @@
         <h2>{{ role_name }}</h2>
         <h3>Users</h3>
         <AddUserRole :role="role" @user-roles-updated="fetchRole(role)"/>
+        <v-divider class="my-4"></v-divider>
         <v-card v-for="user in role.users" :key="user.id" class="pa-3 mt-3" outlined>
         <v-row>
-            <v-col>
+            <v-col cols="8">
                 {{ user.email }}
+            <v-chip
+                v-if="user.discarded_at"
+                label="Inactive"
+                style="float: right;"
+            >Inactive</v-chip>
             </v-col>
-            <v-col>
-                <a style="float: right;" @click="removeUserRole(user.id)">Delete</a>
+            <v-col class="text-right">
+                <a @click="removeUserRole(user.id)">Delete</a>
             </v-col>
         </v-row>
         </v-card>
