@@ -52,13 +52,28 @@ provide('showSnackbar', showSnackbar)
       <v-toolbar-title><a @click="goToDashboard">My App</a></v-toolbar-title>
       <v-spacer></v-spacer>
       <v-btn text v-if="isLoggedIn" @click="goToAccount">Account</v-btn>
-      <v-btn icon v-if="isLoggedIn" @click="logout" style="margin-left: 20px;"><v-icon color="white" icon="mdi-power" size="large"></v-icon></v-btn>
+      <v-menu offset-y v-if="isLoggedIn && userStore.hasRole('admin')">
+        <template v-slot:activator="{ props }">
+          <v-btn v-bind="props">
+            Admin
+          </v-btn>
+        </template>
+        <v-list>
+          <v-list-item to="/roles">
+            <v-list-item-title>Roles</v-list-item-title>
+          </v-list-item>
+          <v-list-item to="/users">
+            <v-list-item-title>Users</v-list-item-title>
+          </v-list-item>
+        </v-list>
+    </v-menu>
+      <v-btn v-if="isLoggedIn" @click="logout" style="margin-left: 20px;">Log out</v-btn>
       <v-btn text v-else-if="!isLoggedIn && route.name !== 'Login'" @click="goToLogin">Log In</v-btn>
       <v-btn text v-else-if="route.name === 'Login'" @click="goToSignUp">Sign Up</v-btn>
-    </v-app-bar>
-    <v-main>
-      <router-view />
-    </v-main>
+  </v-app-bar>
+  <v-main>
+    <router-view />
+  </v-main>
     <v-snackbar v-model="snackbar" :timeout="2000" :color="snackbarColor" location="top right" style="margin-right: 5px;">
       <ul v-if="snackbarMessages.length > 1" style="padding-left: 10px;">
         <li v-for="message in snackbarMessages" :key="message">{{ message }}</li>
