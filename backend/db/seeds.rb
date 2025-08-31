@@ -8,4 +8,4 @@
 #     MovieGenre.find_or_create_by!(name: genre_name)
 #   end
 
-Role.find_or_create_by!(name: 'Application Administrator')
+Role.find_or_create_by!(name: 'admin')
