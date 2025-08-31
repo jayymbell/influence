@@ -71,7 +71,7 @@ export default {
           }
         }
         const response = await userStore.update(data)
-        trackEvent("Updated account", { previous_email: userStore.user.email, new_email: email.value })
+        trackEvent("updated account", { previous_email: userStore.user.email, new_email: email.value })
         await userStore.logout()
         router.push('/login')
         if( props.mode == "change_email") {

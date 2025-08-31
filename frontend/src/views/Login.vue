@@ -54,7 +54,7 @@ export default {
           return
         }
         const response = await userStore.login(data)
-        trackEvent("Logged in", {});
+        trackEvent("logged in", {});
         this.showSnackbar([response.data.message], 'success')
         this.router.push({ name: 'Dashboard' })
       } catch (error) {

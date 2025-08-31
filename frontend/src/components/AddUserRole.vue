@@ -69,7 +69,7 @@ export default {
         const userIds = props.role.users.map(item => item.id)
         userIds.push(selectedUser.value);
         await api.patch('/roles/'+props.role.id, { role: {user_ids: userIds }});
-        trackEvent("Added user role", {user_id: selectedUser.value, role_id: props.role.id});
+        trackEvent("added user role", {user_id: selectedUser.value, role_id: props.role.id});
         showSnackbar(["User role added."], 'success')
         emit('user-roles-updated');
         selectedUser.value = null;
