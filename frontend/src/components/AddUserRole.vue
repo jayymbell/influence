@@ -25,6 +25,7 @@
 <script>
 import { inject, ref, onMounted, computed } from 'vue';
 import api from '../services/api.js';
+import { trackEvent } from "../services/ahoy.js";
 
 export default {
   name: 'AddUserRole',
@@ -68,6 +69,7 @@ export default {
         const userIds = props.role.users.map(item => item.id)
         userIds.push(selectedUser.value);
         await api.patch('/roles/'+props.role.id, { role: {user_ids: userIds }});
+        trackEvent("Added user role", {user_id: selectedUser.value, role_id: props.role.id});
         showSnackbar(["User role added."], 'success')
         emit('user-roles-updated');
         selectedUser.value = null;

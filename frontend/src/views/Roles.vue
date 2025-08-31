@@ -41,6 +41,7 @@ import api from '../services/api.js'
 import AddRole from '../components/AddRole.vue'
 import AddUserRole from '../components/AddUserRole.vue'
 import _ from 'lodash'
+import { trackEvent } from "../services/ahoy.js";
 
 export default {
     components: { AddRole, AddUserRole },
@@ -72,7 +73,8 @@ export default {
 
         const onAddRole = async (roleName) => {
             try {
-                await api.post('/roles', { name: roleName })
+                const response = await api.post('/roles', { name: roleName })
+                trackEvent("Created role", {role_id: response.data.role.id});
                 showSnackbar(['Role created'], 'success')
                 fetchRoles()
             } catch (error) {
@@ -96,6 +98,7 @@ export default {
                 const deleteRole = async (r) => {
             try {
                 const response = await api.delete('/roles/' + r.id)
+                trackEvent("Deleted role", {role_id: r.id});
                 fetchRoles()
                 showSnackbar(['Role deleted'], 'success')
             } catch (error) {
@@ -110,6 +113,7 @@ export default {
                 const userIds = role.value.users.map(item => item.id)
                 const filteredUserIds = userIds.filter(id => id !== parseInt(userId));
                 await api.patch('/roles/'+role.value.id, { role: {user_ids: filteredUserIds }});
+                trackEvent("Removed user role", {user_id: userId, role_id: role.value.id});
                 fetchRole(role.value)
                 showSnackbar(['User role removed'], 'success')
             } catch (error) {
