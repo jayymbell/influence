@@ -65,7 +65,6 @@ export default {
                 const response = await api.get('/roles')
                 roles.value = response.data.roles
             } catch (error) {
-                console.log(error)
                 const e = error.response.data.error || ['An unknown error occurred']
                 showSnackbar([e], 'error')
             }
@@ -78,7 +77,6 @@ export default {
                 showSnackbar(['Role created'], 'success')
                 fetchRoles()
             } catch (error) {
-                console.log(error)
                 const errors = error.response.data.errors || ['An unknown error occurred']
                 showSnackbar(errors, 'error')
             }
@@ -89,7 +87,6 @@ export default {
                 const response = await api.get('/roles/' + r.id)
                 role.value = response.data
             } catch (error) {
-                console.log(error)
                 const e = error.response.data.error || ['An unknown error occurred']
                 showSnackbar([e], 'error')
             }
@@ -102,7 +99,6 @@ export default {
                 fetchRoles()
                 showSnackbar(['Role deleted'], 'success')
             } catch (error) {
-                console.log(error)
                 const e = error.response.data.error || ['An unknown error occurred']
                 showSnackbar([e], 'error')
             }
@@ -117,7 +113,6 @@ export default {
                 fetchRole(role.value)
                 showSnackbar(['User role removed'], 'success')
             } catch (error) {
-                console.log(error)
                 const errors = error.response?.data?.errors || ['An unknown error occurred']
                 showSnackbar(errors, 'error')
             }

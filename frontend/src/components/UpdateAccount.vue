@@ -82,7 +82,6 @@ export default {
             showSnackbar(['Please log back in with your new password.'], 'success')
         }
       } catch (error) {
-        console.log(error)
         const errors = error.response?.data?.errors || ['An unknown error occurred']
         showSnackbar(errors, 'error')
       }
