@@ -39,14 +39,14 @@
   <script>
 import { useRouter } from 'vue-router'
 import { inject, onMounted, ref } from 'vue'
-import useUserStore from '../stores/UserStore'
+import useUserStore from '../stores/UserStore.js'
 import { trackEvent } from "../services/ahoy.js";
 
 export default {
   props: {
     mode: String
   },
-  setup(props) {  // ✅ emit comes from the second argument
+  setup(props) {
     const router = useRouter()
     const showSnackbar = inject('showSnackbar')
     const userStore = useUserStore()

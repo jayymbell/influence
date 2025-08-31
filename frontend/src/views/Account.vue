@@ -29,12 +29,12 @@
   import { useRouter } from 'vue-router'
   import { inject, computed, ref } from 'vue'
   import useUserStore from '../stores/UserStore'
-  import UpdateAccount from './UpdateAccount.vue'
+  import UpdateAccount from '../components/UpdateAccount.vue'
   import _ from 'lodash'
   
   export default {
       components: {
-    UpdateAccount   // ✅ register the child component here
+    UpdateAccount 
   },
     setup() {
       const router = useRouter()
