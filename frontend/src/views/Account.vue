@@ -11,14 +11,14 @@
         <span v-if="roles.length">{{roles}}</span>
         <br>
         <br>
-        <a @click="mode = 'change_email'">change email</a> | <a @click="mode = 'change_password'">change password</a>
+        <a @click="mode = 'change_email'">Change Email</a> | <a @click="mode = 'change_password'">Change Password</a>
         </v-card>
       </div>
       <div v-if="mode != 'view'">
         <h2>{{form_title}}</h2>
           <UpdateAccount :mode="mode">
               <template #actions>
-                  <a @click="mode = 'view'">Cancel</a>
+                  <a @click="mode = 'view'">Close</a>
               </template>
           </UpdateAccount>
       </div>

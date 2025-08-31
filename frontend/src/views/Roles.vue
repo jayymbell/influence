@@ -30,7 +30,7 @@
         </v-row>
         </v-card>
         <br/>
-        <a v-if="role" style="width: 100%; margin-top: 10px;" @click="role = ''">Cancel</a>
+        <a v-if="role" style="width: 100%; margin-top: 10px;" @click="role = ''">Close</a>
         </div>
     </v-container>
 </template>
