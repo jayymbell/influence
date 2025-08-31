@@ -10,8 +10,18 @@ const useUserStore = defineStore("UserStore", () => {
     const user = ref(JSON.parse(localStorage.getItem('user')))
     const bearerToken = ref(localStorage.getItem('bearerToken'))
 
+    // Ensure Authorization header is set on store init (for refresh)
+    if (bearerToken.value) {
+        api.defaults.headers.common['Authorization'] = `Bearer ${bearerToken.value}`;
+    }
+
     // getters
     const isLoggedIn = computed(() => bearerToken.value !== null)
+
+    const hasRole = (roleName) => {
+        if (!user.value || !user.value.roles) return false;
+        return user.value.roles.map(item => item.name).includes(roleName);
+    }
 
     //actions
 
@@ -46,8 +56,10 @@ const useUserStore = defineStore("UserStore", () => {
         return response 
     }
     
+    
+    
 
-    return {user, bearerToken, isLoggedIn, login, logout, update}
+    return {user, bearerToken, isLoggedIn, login, logout, update, hasRole}
 })
 
 export default useUserStore
