@@ -4,6 +4,7 @@ class UsersController < ApplicationController
   # GET /users
   def index
       @users = User.all
+      authorize @users
       render json: {
         status: 200, 
         message: 'Users found.',
@@ -13,6 +14,7 @@ class UsersController < ApplicationController
 
   def show
     @user = User.find(params[:id])
+    authorize @user
     render json: {
       status: 200, 
       message: 'User found.',
@@ -22,6 +24,7 @@ class UsersController < ApplicationController
 
   def update
     @user = User.find(params[:id])
+    authorize @user
     if @user.update(user_params)
       render json: UserSerializer.new(@user).serializable_hash[:data][:attributes]
     else
@@ -32,6 +35,7 @@ class UsersController < ApplicationController
 
   def destroy
     @user = User.find(params[:id])
+    authorize @user
     if @user.discard
       render json: {
         status: 200,
