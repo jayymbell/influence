@@ -18,4 +18,8 @@ class User < ApplicationRecord
   def inactive_message
     discarded? ? :discarded_account : super
   end
+
+  def admin?
+    roles.exists?(name: 'admin')
+  end
 end
