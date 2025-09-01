@@ -23,6 +23,6 @@ class RolePolicy < ApplicationPolicy
   end
 
   def destroy?
-    user.admin?
+    user.admin? && @role.name != 'admin'
   end
 end
