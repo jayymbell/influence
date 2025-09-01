@@ -5,6 +5,7 @@ class RolesController < ApplicationController
   # GET /roles
   def index
       @roles = Role.all
+      authorize @roles
       render json: {
         status: 200, 
         message: 'Roles found.',
@@ -14,13 +15,14 @@ class RolesController < ApplicationController
 
   # GET /roles/1
   def show
+    authorize @role
     render json: RoleSerializer.new(@role).serializable_hash[:data][:attributes]
   end
 
   # POST /roles
   def create
     @role = Role.new(role_params)
-
+    authorize @role
     if @role.save
       render json: {
         status: 200, 
@@ -34,6 +36,7 @@ class RolesController < ApplicationController
 
   # PATCH/PUT /roles/1
   def update
+    authorize @role
     if @role.update(role_params)
       render json: @role
     else
@@ -43,6 +46,7 @@ class RolesController < ApplicationController
 
   # DELETE /roles/1
   def destroy
+    authorize @role
     @role.destroy!
     render json: {
       status: 200,
