@@ -38,14 +38,12 @@ const useUserStore = defineStore("UserStore", () => {
 
     const logout = async () => {
         trackEvent("logged out", {})
+        const response = await api.delete(`/logout`).catch(() => ({ data: { message: 'Signed out' } }))
         bearerToken.value = null
         user.value = null
         localStorage.removeItem('bearerToken')
         localStorage.removeItem('user')
-
-        const response = await api.delete(`/logout`)
-
-
+        delete api.defaults.headers.common['Authorization']
         return response
     }
 
