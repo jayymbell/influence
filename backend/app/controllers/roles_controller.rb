@@ -6,10 +6,11 @@ class RolesController < ApplicationController
   def index
       @roles = Role.all
       authorize @roles
+      serialized_roles = @roles.map { |r| RoleSerializer.new(r).serializable_hash[:data][:attributes] }
       render json: {
         status: 200, 
         message: 'Roles found.',
-        roles: @roles
+        roles: serialized_roles
     }, status: :ok 
   end
 

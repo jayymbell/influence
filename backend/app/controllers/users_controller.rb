@@ -5,10 +5,11 @@ class UsersController < ApplicationController
   def index
       @users = User.all
       authorize @users
+      serialized_users = @users.map { |u| UserSerializer.new(u).serializable_hash[:data][:attributes] }
       render json: {
         status: 200, 
         message: 'Users found.',
-        users: @users
+        users: serialized_users
     }, status: :ok 
   end
 
