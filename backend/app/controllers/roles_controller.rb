@@ -4,20 +4,17 @@ class RolesController < ApplicationController
 
   # GET /roles
   def index
-      @roles = Role.all
-      authorize @roles
+      @roles = policy_scope(Role)
+      authorize Role
       serialized_roles = @roles.map { |r| RoleSerializer.new(r).serializable_hash[:data][:attributes] }
-      render json: {
-        status: 200, 
-        message: 'Roles found.',
-        roles: serialized_roles
-    }, status: :ok 
+      render_success(data: { roles: serialized_roles }, message: 'Roles found.')
   end
 
   # GET /roles/1
   def show
     authorize @role
-    render json: RoleSerializer.new(@role).serializable_hash[:data][:attributes]
+    role_data = RoleSerializer.new(@role).serializable_hash[:data][:attributes]
+    render_success(data: { role: role_data }, message: 'Role found.')
   end
 
   # POST /roles
@@ -25,13 +22,10 @@ class RolesController < ApplicationController
     @role = Role.new(role_params)
     authorize @role
     if @role.save
-      render json: {
-        status: 200, 
-        message: 'Role created.',
-        role: @role
-    }, status: :ok
+      role_data = RoleSerializer.new(@role).serializable_hash[:data][:attributes]
+      render_success(data: { role: role_data }, message: 'Role created.')
     else
-      render json: {errors: @role.errors.full_messages}, status: :unprocessable_entity
+      render_error(errors: @role.errors.full_messages, message: 'Role creation failed.')
     end
   end
 
@@ -39,9 +33,10 @@ class RolesController < ApplicationController
   def update
     authorize @role
     if @role.update(role_params)
-      render json: @role
+      role_data = RoleSerializer.new(@role).serializable_hash[:data][:attributes]
+      render_success(data: { role: role_data }, message: 'Role updated.')
     else
-      render json: {errors: @role.errors.full_messages}, status: :unprocessable_entity
+      render_error(errors: @role.errors.full_messages, message: 'Role update failed.')
     end
   end
 
@@ -49,10 +44,7 @@ class RolesController < ApplicationController
   def destroy
     authorize @role
     @role.destroy!
-    render json: {
-      status: 200,
-      message: 'Role deleted.'
-    }, status: :ok
+    render_success(message: 'Role deleted.')
   end
 
   private

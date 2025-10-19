@@ -48,7 +48,7 @@ const useUserStore = defineStore("UserStore", () => {
     }
 
     const update = async (data) => {
-        const response = await api.patch(`/signup`, data)
+        const response = await api.patch(`/users/${user.value.id}`, data)
         user.value = response.data.user
         localStorage.setItem('user', JSON.stringify(user.value))
         return response 
