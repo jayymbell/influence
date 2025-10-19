@@ -51,21 +51,21 @@ const useUserStore = defineStore("UserStore", () => {
         setAuthHeader(response.data.token)
         // Track login event with new token
         await trackEvent('logged in', {}, response.data.token)
-        
-        // Set auth header before tracking event
-        setAuthHeader(bearerToken.value)
-        
-        // Track login event after authentication is set up
-        await trackEvent("logged in", {})
 
         return response
     }
 
     const logout = async () => {
-        // Track event before removing auth
-        await trackEvent("logged out", {})
+        // Track event before removing auth token
+        const token = bearerToken.value
+        await trackEvent("logged out", {}, token)
         
-        const response = await api.delete(`/logout`).catch(() => ({ data: { message: 'Signed out' } }))
+        const response = await api.delete(`/logout`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }).catch(() => ({ data: { message: 'Signed out' } }))
+        console.log('Logout response:', response)
         bearerToken.value = null
         user.value = null
         localStorage.removeItem('bearerToken')
