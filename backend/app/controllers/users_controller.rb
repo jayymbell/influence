@@ -3,8 +3,8 @@ class UsersController < ApplicationController
 
   # GET /users
   def index
-      @users = User.all
-      authorize @users
+      @users = policy_scope(User)
+      authorize User
       serialized_users = @users.map { |u| UserSerializer.new(u).serializable_hash[:data][:attributes] }
       render json: {
         status: 200, 

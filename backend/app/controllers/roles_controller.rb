@@ -4,8 +4,8 @@ class RolesController < ApplicationController
 
   # GET /roles
   def index
-      @roles = Role.all
-      authorize @roles
+      @roles = policy_scope(Role)
+      authorize Role
       serialized_roles = @roles.map { |r| RoleSerializer.new(r).serializable_hash[:data][:attributes] }
       render json: {
         status: 200, 
