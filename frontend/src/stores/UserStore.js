@@ -9,15 +9,28 @@ const useUserStore = defineStore("UserStore", () => {
     const initUser = () => {
         try {
             const stored = localStorage.getItem('user')
-            return stored ? JSON.parse(stored) : null
+            // Check if the stored value is valid before parsing
+            if (!stored || stored === 'undefined' || stored === 'null') {
+                return null
+            }
+            return JSON.parse(stored)
         } catch (e) {
             console.error('Error parsing stored user:', e)
+            // Clean up invalid storage
+            localStorage.removeItem('user')
             return null
         }
     }
     
+    // Initialize state
     const user = ref(initUser())
     const bearerToken = ref(localStorage.getItem('bearerToken'))
+    
+    // Clean up invalid token if it exists
+    if (bearerToken.value === 'undefined' || bearerToken.value === 'null') {
+        localStorage.removeItem('bearerToken')
+        bearerToken.value = null
+    }
 
     // Ensure Authorization header is set on store init (for refresh)
     const setAuthHeader = (token) => {
@@ -46,10 +59,22 @@ const useUserStore = defineStore("UserStore", () => {
     const login = async (data) => {
         const response = await api.post(`/login`, data)
         if (response.data.token) {
+            // Store token first
             bearerToken.value = response.data.token
             localStorage.setItem('bearerToken', bearerToken.value)
-            user.value = response.data.user
-            localStorage.setItem('user', JSON.stringify(user.value))
+            
+            // Store user if we have valid data
+            if (response.data.data) {
+                user.value = response.data.data
+                try {
+                    localStorage.setItem('user', JSON.stringify(response.data.data))
+                } catch (e) {
+                    console.error('Error storing user data:', e)
+                }
+            } else {
+                console.error('No user data received in login response:', response.data)
+            }
+            
             // Update auth header for future requests
             setAuthHeader(response.data.token)
             // Track login event with new token
