@@ -24,9 +24,21 @@ class Users::EventsController < ApplicationController
   end
 
   def create
-    ahoy.track params[:name], params[:properties] || {}
-    render json: {
-        status: { code: 200}
-    }
+    name = params[:name].to_s.strip
+    properties = params[:properties].is_a?(Hash) ? params[:properties] : {}
+
+    if name.empty?
+      render json: { errors: ['name is required'] }, status: :unprocessable_entity
+      return
+    end
+
+    # Basic size guardrails for properties payload
+    if properties.to_json.bytesize > 10_000
+      render json: { errors: ['properties payload too large'] }, status: :unprocessable_entity
+      return
+    end
+
+    ahoy.track name, properties
+    render json: { status: { code: 200 } }
   end
 end
