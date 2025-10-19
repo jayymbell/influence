@@ -5,8 +5,8 @@ services:
     volumes:
       - db_data:/var/lib/postgresql/data
     environment:
-      POSTGRES_USER: my_app
-      POSTGRES_PASSWORD: password
+      POSTGRES_USER: ${POSTGRES_USER:-my_app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
   backend:
     build: ./backend/
     command: bash -c "rm -f tmp/pids/server.pid && bundle exec rails s -p 3000 -b '0.0.0.0'"
@@ -16,8 +16,8 @@ services:
       - "3000:3000"
     environment:
       DATABASE_HOST: db
-      DATABASE_USERNAME: my_app
-      DATABASE_PASSWORD: password
+      DATABASE_USERNAME: ${POSTGRES_USER:-my_app}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
     depends_on:
       - db
   frontend:
