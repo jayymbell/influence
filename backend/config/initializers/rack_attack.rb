@@ -14,10 +14,10 @@ class Rack::Attack
     end
   end
 
-  throttle('login/email', limit: 5, period: 20.seconds) do |req|
-    if req.path == '/login' && req.post?
-      # Normalize the email, using email.downcase
-      req.params['user']['email'].to_s.downcase.gsub(/\s+/, '')
+  # Rate limit by IP only, removing email-based throttling
+  throttle('auth/ip', limit: 20, period: 5.minutes) do |req|
+    if (req.path == '/login' || req.path == '/signup') && req.post?
+      req.ip
     end
   end
 
