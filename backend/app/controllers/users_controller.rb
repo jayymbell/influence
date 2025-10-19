@@ -28,7 +28,7 @@ class UsersController < ApplicationController
     if @user.update(user_params)
       render json: UserSerializer.new(@user).serializable_hash[:data][:attributes]
     else
-      render json: {errors: @role.errors.full_messages}, status: :unprocessable_entity
+      render json: {errors: @user.errors.full_messages}, status: :unprocessable_entity
     end
   end
 

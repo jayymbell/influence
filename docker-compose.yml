@@ -3,7 +3,7 @@ services:
   db:
     image: postgres
     volumes:
-      - ./backend/tmp/db:/var/lib/postgresql/data
+      - db_data:/var/lib/postgresql/data
     environment:
       POSTGRES_USER: my_app
       POSTGRES_PASSWORD: password
@@ -27,3 +27,6 @@ services:
     ports:
       - "5173:5173"
 
+
+volumes:
+  db_data:

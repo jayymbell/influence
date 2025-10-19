@@ -10,6 +10,11 @@ class Users::EventsController < ApplicationController
     end 
 
     @user = User.find(params[:user_id])
+      unless current_user == @user || current_user.admin?
+        render json: { error: 'You do not have permission to access this' }, status: :forbidden
+        return
+      end
+
       @user_events = @user.events.order(time: :desc)
       render json: {
         status: 200, 
