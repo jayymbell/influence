@@ -3,7 +3,6 @@ import {defineStore} from 'pinia'
 import api from '../services/api'
 import { trackEvent } from "../services/ahoy.js";
 
-
 const useUserStore = defineStore("UserStore", () => {
     
     // state initialization with error handling
@@ -48,6 +47,10 @@ const useUserStore = defineStore("UserStore", () => {
         localStorage.setItem('bearerToken', bearerToken.value)
         user.value = response.data.user
         localStorage.setItem('user', JSON.stringify(user.value))
+        // Update auth header for future requests
+        setAuthHeader(response.data.token)
+        // Track login event with new token
+        await trackEvent('logged in', {}, response.data.token)
         
         // Set auth header before tracking event
         setAuthHeader(bearerToken.value)
