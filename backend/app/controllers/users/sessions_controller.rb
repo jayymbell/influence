@@ -6,14 +6,17 @@ class Users::SessionsController < Devise::SessionsController
   def respond_with(resource, _opt= {})
     if resource.persisted?
       @token = request.env['warden-jwt_auth.token']
-      headers['Authorization'] = @token
+      headers['Authorization'] = "Bearer #{@token}"
+
+      # Create a refresh token
+      refresh_token = resource.refresh_tokens.create!
 
       render json: {
-          status: 200, 
-          message: I18n.t('devise.sessions.signed_in'),
-          token: @token,
-          user: UserSerializer.new(resource).serializable_hash[:data][:attributes]
-      }, status: :ok
+        status: { code: 200, message: 'Logged in successfully.' },
+        data: UserSerializer.new(resource).serializable_hash[:data][:attributes],
+        token: @token,
+        refresh_token: refresh_token.token
+      }
     else
       render json: {
           status: 401,
@@ -25,15 +28,18 @@ class Users::SessionsController < Devise::SessionsController
   def respond_to_on_destroy
     authorization_header = request.headers['Authorization'].to_s
     if authorization_header.present?
+      # Revoke all refresh tokens for the user on logout
+      current_user&.refresh_tokens&.update_all(revoked_at: Time.current, revocation_reason: 'logout')
+      
       render json: {
-        status: 200,
-        message: I18n.t('devise.sessions.signed_out')
-      }, status: :ok
+          status: 200,
+          message: 'Logged out successfully.'
+      }
     else
       render json: {
-        status: 401,
-        message: I18n.t('devise.errors.messages.not_found')
-      }, status: :unauthorized
+          status: 401,
+          message: 'Token not found.'
+      }
     end
   end
 end
