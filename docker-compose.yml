@@ -18,6 +18,7 @@ services:
       DATABASE_HOST: db
       DATABASE_USERNAME: ${POSTGRES_USER:-my_app}
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      FRONTEND_URL: http://localhost:5173
     depends_on:
       - db
   frontend:
