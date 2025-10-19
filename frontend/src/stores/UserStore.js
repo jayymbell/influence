@@ -31,7 +31,10 @@ const useUserStore = defineStore("UserStore", () => {
         localStorage.setItem('bearerToken', bearerToken.value)
         user.value = response.data.user
         localStorage.setItem('user', JSON.stringify(user.value))
-         api.defaults.headers.common['Authorization'] = `Bearer ${bearerToken.value}`
+        api.defaults.headers.common['Authorization'] = `Bearer ${bearerToken.value}`
+
+        // Track login event after authentication is set up
+        await trackEvent("logged in", {})
 
         return response
     }
