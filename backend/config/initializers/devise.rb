@@ -327,16 +327,5 @@ Devise.setup do |config|
       ['DELETE', %r{^/logout$}],
       ['POST', %r{^/refresh-token$}]
     ]
-    
-    # Add request-specific claims
-    jwt.request_object_method = lambda do |request|
-      {
-        iat: Time.current.to_i,
-        jti: SecureRandom.uuid,
-        iss: 'rvp-template-basic',
-        ip: request.remote_ip,
-        ua: request.user_agent
-      }
-    end
   end
 end
