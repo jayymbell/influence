@@ -40,4 +40,5 @@ class Users::SessionsController < Devise::SessionsController
           message: 'Token not found.'
       }
     end
+  end
 end
