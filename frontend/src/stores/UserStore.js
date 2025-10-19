@@ -6,14 +6,31 @@ import { trackEvent } from "../services/ahoy.js";
 
 const useUserStore = defineStore("UserStore", () => {
     
-    // state
-    const user = ref(JSON.parse(localStorage.getItem('user')))
+    // state initialization with error handling
+    const initUser = () => {
+        try {
+            const stored = localStorage.getItem('user')
+            return stored ? JSON.parse(stored) : null
+        } catch (e) {
+            console.error('Error parsing stored user:', e)
+            return null
+        }
+    }
+    
+    const user = ref(initUser())
     const bearerToken = ref(localStorage.getItem('bearerToken'))
 
     // Ensure Authorization header is set on store init (for refresh)
-    if (bearerToken.value) {
-        api.defaults.headers.common['Authorization'] = `Bearer ${bearerToken.value}`;
+    const setAuthHeader = (token) => {
+        if (token) {
+            api.defaults.headers.common['Authorization'] = `Bearer ${token}`
+        } else {
+            delete api.defaults.headers.common['Authorization']
+        }
     }
+
+    // Initialize auth header
+    setAuthHeader(bearerToken.value)
 
     // getters
     const isLoggedIn = computed(() => bearerToken.value !== null)
@@ -31,8 +48,10 @@ const useUserStore = defineStore("UserStore", () => {
         localStorage.setItem('bearerToken', bearerToken.value)
         user.value = response.data.user
         localStorage.setItem('user', JSON.stringify(user.value))
-        api.defaults.headers.common['Authorization'] = `Bearer ${bearerToken.value}`
-
+        
+        // Set auth header before tracking event
+        setAuthHeader(bearerToken.value)
+        
         // Track login event after authentication is set up
         await trackEvent("logged in", {})
 
@@ -40,13 +59,15 @@ const useUserStore = defineStore("UserStore", () => {
     }
 
     const logout = async () => {
-        trackEvent("logged out", {})
+        // Track event before removing auth
+        await trackEvent("logged out", {})
+        
         const response = await api.delete(`/logout`).catch(() => ({ data: { message: 'Signed out' } }))
         bearerToken.value = null
         user.value = null
         localStorage.removeItem('bearerToken')
         localStorage.removeItem('user')
-        delete api.defaults.headers.common['Authorization']
+        setAuthHeader(null)
         return response
     }
 
