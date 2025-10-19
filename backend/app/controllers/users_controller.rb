@@ -6,30 +6,24 @@ class UsersController < ApplicationController
       @users = policy_scope(User)
       authorize User
       serialized_users = @users.map { |u| UserSerializer.new(u).serializable_hash[:data][:attributes] }
-      render json: {
-        status: 200, 
-        message: 'Users found.',
-        users: serialized_users
-    }, status: :ok 
+      render_success(data: { users: serialized_users }, message: 'Users found.')
   end
 
   def show
     @user = User.find(params[:id])
     authorize @user
-    render json: {
-      status: 200, 
-      message: 'User found.',
-      user: UserSerializer.new(@user).serializable_hash[:data][:attributes]
-  }, status: :ok 
+    user_data = UserSerializer.new(@user).serializable_hash[:data][:attributes]
+    render_success(data: { user: user_data }, message: 'User found.')
   end
 
   def update
     @user = User.find(params[:id])
     authorize @user
     if @user.update(user_params)
-      render json: UserSerializer.new(@user).serializable_hash[:data][:attributes]
+      user_data = UserSerializer.new(@user).serializable_hash[:data][:attributes]
+      render_success(data: { user: user_data }, message: 'User updated.')
     else
-      render json: {errors: @user.errors.full_messages}, status: :unprocessable_entity
+      render_error(errors: @user.errors.full_messages, message: 'User update failed.')
     end
   end
 
@@ -38,16 +32,9 @@ class UsersController < ApplicationController
     @user = User.find(params[:id])
     authorize @user
     if @user.discard
-      render json: {
-        status: 200,
-        message: 'User deactivated.'
-      }, status: :ok
+      render_success(message: 'User deactivated.')
     else
-      render json: {
-        status: 422,
-        message: 'User deactivation failed.',
-        errors: @user.errors.full_messages
-      }, status: :unprocessable_entity
+      render_error(errors: @user.errors.full_messages, message: 'User deactivation failed.')
     end
   end
 
