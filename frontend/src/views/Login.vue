@@ -54,7 +54,7 @@ export default {
           return
         }
         const response = await userStore.login(data)
-        this.showSnackbar([response.data.message], 'success')
+        this.showSnackbar([response.data.status.message], 'success')
         this.router.push({ name: 'Dashboard' })
       } catch (error) {
         const e = error.response.data.error || ['An unknown error occurred']
