@@ -8,12 +8,14 @@ class Users::SessionsController < Devise::SessionsController
       @token = request.env['warden-jwt_auth.token']
       headers['Authorization'] = @token
 
+      # Create a refresh token
+      refresh_token = resource.refresh_tokens.create!
+
       render json: {
-          status: 200, 
-          message: I18n.t('devise.sessions.signed_in'),
-          token: @token,
-          user: UserSerializer.new(resource).serializable_hash[:data][:attributes]
-      }, status: :ok
+        status: { code: 200, message: 'Logged in successfully.' },
+        data: UserSerializer.new(resource).serializable_hash[:data][:attributes],
+        refresh_token: refresh_token.token
+      }
     else
       render json: {
           status: 401,

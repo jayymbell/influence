@@ -1,0 +1,39 @@
+class Users::RefreshTokensController < ApplicationController
+  respond_to :json
+
+  def create
+    token = params[:refresh_token].to_s.strip
+    @refresh_token = RefreshToken.find_by(token: token)
+
+    unless @refresh_token&.active?
+      render json: {
+        status: 401,
+        message: 'Invalid or expired refresh token'
+      }, status: :unauthorized
+      return
+    end
+
+    # Revoke the current refresh token
+    @refresh_token.revoke!
+
+    # Create a new refresh token
+    new_refresh_token = @refresh_token.user.refresh_tokens.create!
+
+    # Return new access token and refresh token
+    render json: {
+      status: 200,
+      message: 'Token refreshed successfully',
+      data: {
+        token: generate_jwt_token(@refresh_token.user),
+        refresh_token: new_refresh_token.token
+      }
+    }
+  end
+
+  private
+
+  def generate_jwt_token(user)
+    headers = { 'Accept' => 'application/json', 'Content-Type' => 'application/json' }
+    Warden::JWTAuth::UserEncoder.new.call(user, :user, nil, headers).first
+  end
+end

@@ -180,9 +180,6 @@ Devise.setup do |config|
   # Range for password length.
   config.password_length = 12..128
 
-  # Require at least one uppercase letter, one lowercase letter, one number, and one special character
-  config.password_regex = /\A(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/
-
   # Email regex used to validate email formats. It simply asserts that
   # one (and only one) @ exists in the given string. This is mainly
   # to give user feedback and not to assert the e-mail validity.
@@ -318,12 +315,28 @@ Devise.setup do |config|
     ## JWT configuration
   config.jwt do |jwt|
     jwt.secret = Rails.application.credentials.jwt_secret_key!
-        jwt.dispatch_requests = [
-      ['POST', %r{^/login$}]
+    # Shorter expiration time for access tokens
+    jwt.expiration_time = 15.minutes.to_i
+    
+    # Configure token dispatch and revocation
+    jwt.dispatch_requests = [
+      ['POST', %r{^/login$}],
+      ['POST', %r{^/refresh-token$}]
     ]
     jwt.revocation_requests = [
-      ['DELETE', %r{^/logout$}]
+      ['DELETE', %r{^/logout$}],
+      ['POST', %r{^/refresh-token$}]
     ]
-    jwt.expiration_time = 1.day.to_i
+    
+    # Add request-specific claims
+    jwt.request_object_method = lambda do |request|
+      {
+        iat: Time.current.to_i,
+        jti: SecureRandom.uuid,
+        iss: 'rvp-template-basic',
+        ip: request.remote_ip,
+        ua: request.user_agent
+      }
+    end
   end
 end

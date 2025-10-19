@@ -13,6 +13,7 @@ Rails.application.routes.draw do
 
   namespace :users do
     resources :events, only: [:create, :index]
+    post 'refresh-token', to: 'refresh_tokens#create'
   end
 
   resources :roles
