@@ -12,7 +12,7 @@ class ApplicationController < ActionController::API
   # Standardized JSON response format
   def render_success(data: nil, message: 'Success', status: :ok)
     response = { status: Rack::Utils.status_code(status), message: message }
-    response[:data] = data if data.present?
+    response.merge!(data) if data.present?
     render json: response, status: status
   end
 

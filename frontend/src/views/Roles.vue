@@ -92,7 +92,7 @@ export default {
         const fetchRole = async (r) => {
             try {
                 const response = await api.get('/roles/' + r.id)
-                role.value = response.data
+                role.value = response.data.role
             } catch (error) {
                 const e = error.response.data.error || ['An unknown error occurred']
                 showSnackbar([e], 'error')
