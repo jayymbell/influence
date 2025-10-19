@@ -56,22 +56,36 @@ const useUserStore = defineStore("UserStore", () => {
     }
 
     const logout = async () => {
-        // Track event before removing auth token
         const token = bearerToken.value
-        await trackEvent("logged out", {}, token)
+        if (!token) {
+          return { data: { message: 'Already signed out' } }
+        }
         
-        const response = await api.delete(`/logout`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        }).catch(() => ({ data: { message: 'Signed out' } }))
-        console.log('Logout response:', response)
-        bearerToken.value = null
-        user.value = null
-        localStorage.removeItem('bearerToken')
-        localStorage.removeItem('user')
-        setAuthHeader(null)
-        return response
+        try {
+          // First try to log out on the server
+          const response = await api.delete(`/logout`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          })
+          
+          // If successful, track the logout event
+          await trackEvent("logged out", {}, token)
+          
+          return response
+        } catch (error) {
+          console.warn('Logout error:', error)
+          // Continue with cleanup even if server request fails
+        } finally {
+          // Always clean up local state
+          bearerToken.value = null
+          user.value = null
+          localStorage.removeItem('bearerToken')
+          localStorage.removeItem('user')
+          setAuthHeader(null)
+        }
+        
+        return { data: { message: 'Signed out' } }
     }
 
     const update = async (data) => {
