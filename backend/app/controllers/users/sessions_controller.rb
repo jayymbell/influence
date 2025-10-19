@@ -6,7 +6,7 @@ class Users::SessionsController < Devise::SessionsController
   def respond_with(resource, _opt= {})
     if resource.persisted?
       @token = request.env['warden-jwt_auth.token']
-      headers['Authorization'] = @token
+      headers['Authorization'] = "Bearer #{@token}"
 
       # Create a refresh token
       refresh_token = resource.refresh_tokens.create!
@@ -14,6 +14,7 @@ class Users::SessionsController < Devise::SessionsController
       render json: {
         status: { code: 200, message: 'Logged in successfully.' },
         data: UserSerializer.new(resource).serializable_hash[:data][:attributes],
+        token: @token,
         refresh_token: refresh_token.token
       }
     else

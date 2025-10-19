@@ -22,7 +22,9 @@ const useUserStore = defineStore("UserStore", () => {
     // Ensure Authorization header is set on store init (for refresh)
     const setAuthHeader = (token) => {
         if (token) {
-            api.defaults.headers.common['Authorization'] = `Bearer ${token}`
+            // Ensure token doesn't already have 'Bearer ' prefix
+            const tokenValue = token.startsWith('Bearer ') ? token : `Bearer ${token}`
+            api.defaults.headers.common['Authorization'] = tokenValue
         } else {
             delete api.defaults.headers.common['Authorization']
         }
@@ -43,14 +45,18 @@ const useUserStore = defineStore("UserStore", () => {
 
     const login = async (data) => {
         const response = await api.post(`/login`, data)
-        bearerToken.value = response.data.token
-        localStorage.setItem('bearerToken', bearerToken.value)
-        user.value = response.data.user
-        localStorage.setItem('user', JSON.stringify(user.value))
-        // Update auth header for future requests
-        setAuthHeader(response.data.token)
-        // Track login event with new token
-        await trackEvent('logged in', {}, response.data.token)
+        if (response.data.token) {
+            bearerToken.value = response.data.token
+            localStorage.setItem('bearerToken', bearerToken.value)
+            user.value = response.data.user
+            localStorage.setItem('user', JSON.stringify(user.value))
+            // Update auth header for future requests
+            setAuthHeader(response.data.token)
+            // Track login event with new token
+            await trackEvent('logged in', {}, response.data.token)
+        } else {
+            console.error('No token received in login response')
+        }
 
         return response
     }
