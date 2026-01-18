@@ -42,21 +42,16 @@ RSpec.describe 'Auth E2E', type: :request do
     expect(new_access).to be_present
     expect(new_refresh).to be_present
 
-    # Debug: list refresh tokens after rotation
-    user.reload
-    # puts "REFRESH TOKENS AFTER ROTATION: ", user.refresh_tokens.pluck(:id, :token, :revoked_at)
-
     # Logout using an Authorization header that will set current_user in tests
     # (use the test helper to build a valid JWT for the user)
+    user.reload
     delete '/logout', headers: json_headers.merge(auth_headers_for(user))
     expect(response).to have_http_status(:ok)
     logout_body = json_response
     expect(logout_body['message']).to match(/Logged out successfully/i)
 
-    # Debug: list refresh tokens after logout
-    user.reload
-    # puts "REFRESH TOKENS AFTER LOGOUT: ", user.refresh_tokens.pluck(:id, :token, :revoked_at)
     # At least one refresh token should be revoked (rotation and/or logout)
+    user.reload
     expect(user.refresh_tokens.where.not(revoked_at: nil).count).to be >= 1
   end
 end
