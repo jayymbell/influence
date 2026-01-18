@@ -7,9 +7,7 @@
 
 Rails.application.config.middleware.insert_before 0, Rack::Cors do
   allow do
-    allowed_origins = ENV.fetch("FRONTEND_URL", nil)
-    allowed_origins ||= ENV.fetch("FRONTEND_URLS", "")
-    origins(*allowed_origins.split(/[,\s]+/).reject(&:empty?))
+    origins ENV.fetch("FRONTEND_URL", nil)
 
     resource "*",
       headers: :any,
