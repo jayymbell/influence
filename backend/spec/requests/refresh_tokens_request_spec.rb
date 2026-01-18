@@ -22,5 +22,26 @@ RSpec.describe 'Refresh Tokens API', type: :request do
       # Ensure a new refresh token was created for the user
       expect(user.refresh_tokens.active.count).to be >= 1
     end
+
+    it 'returns 401 for an invalid refresh token' do
+      post '/users/refresh-token', params: { refresh_token: 'nope' }.to_json, headers: { 'Content-Type' => 'application/json', 'Accept' => 'application/json' }
+
+      expect(response).to have_http_status(:unauthorized)
+      body = JSON.parse(response.body)
+      expect(body['message']).to match(/Invalid or expired refresh token/i)
+    end
+
+    it 'returns 401 for an expired refresh token' do
+  user = create(:user)
+  expired_rt = create(:refresh_token, user: user)
+  # before_create in the model sets expires_at; override it in DB to simulate expiration
+  expired_rt.update_column(:expires_at, 2.days.ago)
+
+  post '/users/refresh-token', params: { refresh_token: expired_rt.token }.to_json, headers: { 'Content-Type' => 'application/json', 'Accept' => 'application/json' }
+
+      expect(response).to have_http_status(:unauthorized)
+      body = JSON.parse(response.body)
+      expect(body['message']).to match(/Invalid or expired refresh token/i)
+    end
   end
 end
