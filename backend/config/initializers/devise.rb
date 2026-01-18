@@ -313,8 +313,11 @@ Devise.setup do |config|
   # config.sign_in_after_change_password = true
 
     ## JWT configuration
+  jwt_secret = Rails.application.credentials.jwt_secret_key || ENV['JWT_SECRET_KEY']
+  raise "JWT secret missing" unless jwt_secret
+  
   config.jwt do |jwt|
-    jwt.secret = Rails.application.credentials.jwt_secret_key!
+    jwt.secret = jwt_secret
     # Shorter expiration time for access tokens
     jwt.expiration_time = 15.minutes.to_i
     
