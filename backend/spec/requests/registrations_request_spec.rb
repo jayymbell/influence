@@ -30,7 +30,7 @@ RSpec.describe 'Registrations API', type: :request do
     it 'returns 422 when password is weak' do
       post '/signup', params: { user: { email: 'weak@example.com', password: 'weak', password_confirmation: 'weak' } }.to_json, headers: headers
 
-      expect(response).to have_http_status(:unprocessable_entity)
+  expect(response).to have_http_status(:unprocessable_content)
       body = JSON.parse(response.body)
       expect(body['errors']).to be_present
       expect(body['errors'].join(' ')).to match(/must contain at least one uppercase letter|too short|must contain at least one special character/i)
@@ -41,7 +41,7 @@ RSpec.describe 'Registrations API', type: :request do
 
       post '/signup', params: { user: { email: 'dup@example.com', password: valid_password, password_confirmation: valid_password } }.to_json, headers: headers
 
-      expect(response).to have_http_status(:unprocessable_entity)
+  expect(response).to have_http_status(:unprocessable_content)
       body = JSON.parse(response.body)
       expect(body['errors'].join(' ')).to match(/has already been taken|already been taken/i)
     end

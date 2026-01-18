@@ -18,10 +18,7 @@ class Users::SessionsController < Devise::SessionsController
         refresh_token: refresh_token.token
       }
     else
-      render json: {
-          status: 401,
-          message: I18n.t('devise.failure.invalid', authentication_keys: 'token')
-      }, status: :unauthorized
+      render_error(errors: I18n.t('devise.failure.invalid', authentication_keys: 'token'), message: I18n.t('devise.failure.invalid', authentication_keys: 'token'), status: :unauthorized)
     end
   end
 
@@ -36,10 +33,7 @@ class Users::SessionsController < Devise::SessionsController
           message: 'Logged out successfully.'
       }
     else
-      render json: {
-        status: 401,
-        message: 'Token not found.'
-      }, status: :unauthorized
+      render_error(errors: ['Token not found.'], message: 'Token not found.', status: :unauthorized)
     end
   end
 end

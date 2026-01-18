@@ -6,10 +6,7 @@ class Users::RefreshTokensController < ApplicationController
     @refresh_token = RefreshToken.find_by(token: token)
 
     unless @refresh_token&.active?
-      render json: {
-        status: 401,
-        message: 'Invalid or expired refresh token'
-      }, status: :unauthorized
+      render_error(errors: ['Invalid or expired refresh token'], message: 'Invalid or expired refresh token', status: :unauthorized)
       return
     end
 

@@ -13,10 +13,7 @@ class Users::PasswordsController < Devise::PasswordsController
         status: { code: 200, message: I18n.t('devise.passwords.updated_not_active') }
       }
     else
-      render json: {
-        status: { message: 'Password reset failed.' },
-        errors: resource.errors.full_messages
-      }, status: :unprocessable_entity
+      render_error(errors: resource.errors.full_messages, message: 'Password reset failed.', status: :unprocessable_content)
     end
   end
 end
