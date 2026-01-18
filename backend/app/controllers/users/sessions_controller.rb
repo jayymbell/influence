@@ -37,9 +37,9 @@ class Users::SessionsController < Devise::SessionsController
       }
     else
       render json: {
-          status: 401,
-          message: 'Token not found.'
-      }
+        status: 401,
+        message: 'Token not found.'
+      }, status: :unauthorized
     end
   end
 end
