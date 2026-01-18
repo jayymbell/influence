@@ -33,7 +33,14 @@ class Users::RefreshTokensController < ApplicationController
   private
 
   def generate_jwt_token(user)
-    headers = { 'Accept' => 'application/json', 'Content-Type' => 'application/json' }
-    Warden::JWTAuth::UserEncoder.new.call(user, :user, nil, headers).first
+    encoder = Warden::JWTAuth::UserEncoder.new
+    # Different versions of warden-jwt_auth expect different arities for `call`.
+    # Call with 3 args if that's the signature, otherwise pass headers as the 4th arg.
+    if encoder.method(:call).arity == 3
+      encoder.call(user, :user, nil).first
+    else
+      headers = { 'Accept' => 'application/json', 'Content-Type' => 'application/json' }
+      encoder.call(user, :user, nil, headers).first
+    end
   end
 end
