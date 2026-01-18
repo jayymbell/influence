@@ -1,0 +1,26 @@
+require 'rails_helper'
+
+RSpec.describe 'Refresh Tokens API', type: :request do
+  describe 'POST /users/refresh-token' do
+    it 'rotates the refresh token and returns a new access token and refresh token' do
+      user = create(:user)
+      rt = create(:refresh_token, user: user)
+
+      # Stub JWT generation to avoid depending on Warden internals in this test
+      allow_any_instance_of(Users::RefreshTokensController).to receive(:generate_jwt_token).and_return('fake_jwt_token')
+
+      post '/users/refresh-token', params: { refresh_token: rt.token }.to_json, headers: { 'Content-Type' => 'application/json', 'Accept' => 'application/json' }
+
+      expect(response).to have_http_status(:ok)
+      body = JSON.parse(response.body)
+      expect(body['data']).to be_a(Hash)
+      expect(body['data']['token']).to eq('fake_jwt_token')
+      expect(body['data']['refresh_token']).to be_present
+
+      rt.reload
+      expect(rt.revoked_at).to be_present
+      # Ensure a new refresh token was created for the user
+      expect(user.refresh_tokens.active.count).to be >= 1
+    end
+  end
+end
