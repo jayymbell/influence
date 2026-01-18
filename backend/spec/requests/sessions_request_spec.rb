@@ -1,8 +1,6 @@
 require 'rails_helper'
 
 RSpec.describe 'Sessions API', type: :request do
-  let(:headers) { { 'Content-Type' => 'application/json', 'Accept' => 'application/json' } }
-
   describe 'DELETE /logout' do
     context 'with valid Authorization header' do
       it 'revokes refresh tokens and returns success' do
@@ -14,7 +12,7 @@ RSpec.describe 'Sessions API', type: :request do
         delete '/logout', headers: auth_headers_for(user)
 
         expect(response).to have_http_status(:ok)
-        body = JSON.parse(response.body)
+        body = json_response
         expect(body['message']).to match(/Logged out successfully/i)
 
         expect(refresh_token.reload.revoked_at).to be_present
@@ -24,10 +22,10 @@ RSpec.describe 'Sessions API', type: :request do
 
     context 'without Authorization header' do
       it 'returns token not found message' do
-        delete '/logout', headers: headers
+        delete '/logout', headers: json_headers
 
         expect(response).to have_http_status(:unauthorized)
-        body = JSON.parse(response.body)
+        body = json_response
         expect(body['message']).to match(/Token not found/i)
         expect(body['status']).to eq(401)
       end

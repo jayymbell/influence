@@ -6,12 +6,7 @@ RSpec.describe RolePolicy do
   let(:role) { create(:role) }
 
   context 'for admin users' do
-    let(:user) { create(:user) }
-
-    before do
-      admin = Role.find_or_create_by!(name: 'admin') { |r| r.description = 'Administrator' }
-      user.roles << admin
-    end
+    let(:user) { create(:user, :admin) }
 
     it 'allows index' do
       expect(subject.new(user, Role).index?).to be true
