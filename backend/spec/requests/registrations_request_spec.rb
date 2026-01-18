@@ -6,6 +6,8 @@ RSpec.describe 'Registrations API', type: :request do
 
   before do
     ActionMailer::Base.deliveries.clear
+    # Clear Rack::Attack cache to avoid test flakiness from rate limits
+    Rack::Attack.cache.store.clear if defined?(Rack::Attack)
   end
 
   describe 'POST /signup' do
