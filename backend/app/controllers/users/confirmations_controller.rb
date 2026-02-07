@@ -10,10 +10,7 @@ class Users::ConfirmationsController < Devise::ConfirmationsController
         status: { code: 200, message: 'Email confirmed.' }
       }
     else
-      render json: {
-        status: { message: 'Confirmation failed.' },
-        errors: resource.errors.collect(&:type).map{ |error| error.to_s.humanize }
-      }, status: :unprocessable_entity
+      render_error(errors: resource.errors.collect(&:type).map{ |error| error.to_s.humanize }, message: 'Confirmation failed.', status: :unprocessable_content)
     end
   end
 end

@@ -8,4 +8,6 @@
 #     MovieGenre.find_or_create_by!(name: genre_name)
 #   end
 
-Role.find_or_create_by!(name: 'admin')
+User.create!(email: 'my-app-admin@example.com', password: 'Password123!!', password_confirmation: 'Password123!!', confirmed_at: Time.current) do |user|
+  user.roles << Role.find_or_create_by!(name: 'admin')
+end

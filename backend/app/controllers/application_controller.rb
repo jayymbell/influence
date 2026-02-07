@@ -16,7 +16,7 @@ class ApplicationController < ActionController::API
     render json: response, status: status
   end
 
-  def render_error(errors:, message: 'Error', status: :unprocessable_entity)
+  def render_error(errors:, message: 'Error', status: :unprocessable_content)
     render json: {
       status: Rack::Utils.status_code(status),
       message: message,

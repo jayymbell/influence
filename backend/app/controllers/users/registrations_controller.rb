@@ -13,11 +13,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
         user: UserSerializer.new(resource).serializable_hash[:data][:attributes]
       }
     else
-      render json: {
-        status: 422,
-        message: 'Account update failed.',
-        errors: resource.errors.full_messages
-      }, status: :unprocessable_entity
+  render_error(errors: resource.errors.full_messages, message: 'Account update failed.', status: :unprocessable_content)
     end
   end
 
@@ -31,11 +27,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
         message: I18n.t('devise.registrations.signed_up_but_unconfirmed')
       }
     else
-      render json: {
-        status: 422,
-        message: 'Sign up failed.',
-        errors: resource.errors.full_messages
-      }, status: :unprocessable_entity
+      render_error(errors: resource.errors.full_messages, message: 'Sign up failed.', status: :unprocessable_content)
     end
   end
 
