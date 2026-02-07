@@ -1,16 +1,17 @@
-FROM node:lts-alpine
+FROM node:20.19-bullseye
 
-
-# make the 'app' folder the current working directory
+# use /frontend as working dir
 WORKDIR /frontend
 
-# copy both 'package.json' and 'package-lock.json' (if available)
+# copy package manifests and install dependencies
 COPY package*.json ./
-
-# install project dependencies
 RUN yarn install
 
-# copy project files and folders to the current working directory (i.e. 'app' folder)
+# copy source
 COPY . .
+
+# ensure Playwright browsers are available (image already includes them, but harmless)
+# Install Playwright browsers and required dependencies
+RUN npx playwright install --with-deps || true
 
 CMD [ "yarn", "dev", "--host", "0.0.0.0" ]

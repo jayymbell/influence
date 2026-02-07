@@ -13,7 +13,8 @@ export default defineConfig({
       autoImport: true,
     }),
     enableCoverage && istanbul({
-      include: ['src/**/*.js', 'src/**/*.vue', 'src/**/*.ts'],
+      include: ['src/**/*.{js,ts,vue}'],
+      exclude: ['src/**/__tests__/**', 'src/**/*.test.*', 'src/**/*.spec.*'],
       extension: ['.js', '.ts', '.vue'],
       // produce `window.__coverage__` for collection by Playwright
       requireEnv: false,

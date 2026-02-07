@@ -1,7 +1,7 @@
-const fs = require('fs')
-const path = require('path')
+import fs from 'fs'
+import path from 'path'
 
-async function collectCoverage(page, id) {
+export async function collectCoverage(page, id) {
   const coverage = await page.evaluate(() => window.__coverage__)
   if (!coverage) return null
   const outDir = path.resolve(process.cwd(), 'coverage', 'playwright')
@@ -10,5 +10,3 @@ async function collectCoverage(page, id) {
   fs.writeFileSync(filename, JSON.stringify(coverage))
   return filename
 }
-
-module.exports = { collectCoverage }

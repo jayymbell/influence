@@ -1,20 +1,19 @@
 /* eslint-env jest */
 import { setActivePinia, createPinia } from 'pinia'
 
-
-// Mock the API and tracking services. jest.mock is hoisted, so get the mocked module via require after mocking.
-jest.mock('../services/api', () => ({
+// Mock the API and tracking services
+jest.mock('../../src/services/api', () => ({
   defaults: { headers: { common: {} } },
   post: jest.fn(),
   delete: jest.fn(),
   patch: jest.fn()
 }))
-jest.mock('../services/ahoy.js', () => ({ trackEvent: jest.fn().mockResolvedValue({}) }))
+jest.mock('../../src/services/ahoy.js', () => ({ trackEvent: jest.fn().mockResolvedValue({}) }))
 
-const mockApi = require('../services/api')
-const { trackEvent } = require('../services/ahoy.js')
+const mockApi = require('../../src/services/api')
+const { trackEvent } = require('../../src/services/ahoy.js')
 
-import useUserStore from '../stores/UserStore'
+import useUserStore from '../../src/stores/UserStore'
 
 beforeEach(() => {
   localStorage.clear()
@@ -46,8 +45,6 @@ test('login stores token and user and sets auth header', async () => {
 
 test('logout calls trackEvent and api and clears state', async () => {
   mockApi.delete.mockResolvedValue({ data: { message: 'ok' } })
-  const { trackEvent } = require('../services/ahoy.js')
-
   const store = useUserStore()
   // prime state
   store.bearerToken = 'tok'

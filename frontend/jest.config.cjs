@@ -1,5 +1,7 @@
 module.exports = {
   testEnvironment: 'jsdom',
+  testMatch: ['**/tests/unit/**/*.test.js'],
+  testPathIgnorePatterns: ['/node_modules/', 'tests/e2e'],
   transform: {
     '^.+\\.vue$': '@vue/vue3-jest',
     '^.+\\.[jt]sx?$': 'babel-jest'
