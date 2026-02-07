@@ -21,7 +21,7 @@
           1,
           null,
           1,
-          40,
+          42,
           null,
           null,
           1,
@@ -45,21 +45,21 @@
         "lines": [
           1,
           1,
-          129,
+          133,
           null,
-          128,
+          132,
           3,
           null,
           null,
-          128,
+          132,
           1,
           null,
           null,
-          128,
+          132,
           3,
           null,
           null,
-          128,
+          132,
           3,
           null,
           null,
@@ -87,10 +87,10 @@
           null,
           null,
           1,
-          12,
+          13,
           null,
           null,
-          12,
+          13,
           null,
           null,
           null
@@ -464,6 +464,29 @@
           null
         ]
       },
+      "/backend/app/controllers/users/passwords_controller.rb": {
+        "lines": [
+          1,
+          1,
+          null,
+          1,
+          null,
+          1,
+          4,
+          2,
+          null,
+          null,
+          2,
+          1,
+          null,
+          null,
+          null,
+          1,
+          null,
+          null,
+          null
+        ]
+      },
       "/backend/app/controllers/roles_controller.rb": {
         "lines": [
           1,
@@ -645,30 +668,6 @@
           null
         ]
       },
-      "/backend/app/controllers/users/passwords_controller.rb": {
-        "lines": [
-          0,
-          0,
-          null,
-          0,
-          null,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0
-        ],
-        "branches": {}
-      },
       "/backend/app/jobs/application_job.rb": {
         "lines": [
           0,
@@ -702,6 +701,6 @@
         "branches": {}
       }
     },
-    "timestamp": 1770497478
+    "timestamp": 1770497602
   }
 }
