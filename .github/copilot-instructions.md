@@ -47,9 +47,50 @@
 - Use `discard` for deactivation rather than `destroy` for User records.
 - Health endpoint: GET /up is present — useful for monitoring and smoke tests.
 
-## Where to run tests & what to expect
-- Rails tests live in `test/` (standard Minitest layout). Use the project's test helper at `test/test_helper.rb` to run tests.
-- If you change authorization or serialization behavior, update tests for controllers and serializers.
+## Test suites and running tests
+
+### Backend (Rails + RSpec)
+- Framework: RSpec 6.0 with Rails integration (`rspec-rails`)
+- Test structure: `backend/spec/` organized by type (controllers, models, policies, requests, services, validators, support, factories)
+- Factory setup: FactoryBot (`factory_bot_rails`) with factories in `backend/spec/factories/`
+- Coverage: SimpleCov configured to track test coverage
+- Run all tests: `docker compose run --rm backend bundle exec rspec` or locally `bundle exec rspec`
+- Run specific suite: `bundle exec rspec spec/controllers/` or `bundle exec rspec spec/policies/`
+- Run with coverage: `bundle exec rspec --require spec_helper --format progress` (SimpleCov will generate reports in `coverage/`)
+- Key test files to maintain:
+  - `spec/controllers/*_spec.rb` — verify authorization, response shape, and Pundit integration
+  - `spec/policies/*_policy_spec.rb` — test Pundit rules (index, show, create, update, destroy, etc.)
+  - `spec/services/*.rb` — test JWT claims, serialization, and business logic
+  - `spec/models/*.rb` — test model validations and associations
+
+### Frontend (Jest + Playwright)
+- Unit tests: Jest configured with Vue Test Utils and Babel
+- E2E tests: Playwright with coverage instrumentation
+- Test commands (run from repo root with docker-compose):
+  - `docker compose run --rm frontend yarn test` — run Jest unit tests
+  - `docker compose run --rm frontend yarn test:coverage` — run Jest with coverage report
+  - `docker compose run --rm frontend yarn e2e:coverage` — build coverage-instrumented app and run Playwright tests
+  - `docker compose run --rm frontend yarn e2e:coverage-dev` — dev mode for Playwright (serves app and runs tests)
+- Coverage reports: `frontend/coverage/` (Jest) and `frontend/coverage/lcov-report/` (merged)
+- Playwright config: `frontend/playwright/playwright.config.cjs` 
+- Test locations: `frontend/tests/unit/` and `frontend/tests/e2e/`
+- Key test areas:
+  - Components: store interactions, props, emitted events, API calls (use `vi.mock('axios')`)
+  - Stores (Pinia): state mutations, actions, auth token refresh
+  - Router: navigation guards, protected routes
+  - Services: API call formatting, error handling
+
+### Test database and isolation
+- Backend: RSpec uses transaction rollback for test isolation (configured in `spec/spec_helper.rb` and `spec/rails_helper.rb`)
+- Database state: tests are isolated per spec file; use `FactoryBot.create()` to set up records in a clean state
+- Seeding: `backend/db/seeds.rb` can be run manually but is not part of standard test flow
+
+### When to update tests
+- Add a new controller action → add request spec to `spec/requests/`
+- Change Pundit authorization → update `spec/policies/*_policy_spec.rb`
+- Modify serialization → verify serializer spec or controller response shape in controller specs
+- Update frontend state (auth, UI) → add or update Jest test or Playwright scenario
+- Soft delete behavior → test `:discard`, `:discarded?`, and `:kept` scopes in model specs
 
 ---
 If any piece of this guide is unclear or you want me to expand any section (examples for adding a controller, writing a policy, or adding a frontend API client), tell me which area and I'll iterate.
