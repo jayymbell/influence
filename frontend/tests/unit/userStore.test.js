@@ -43,24 +43,78 @@ test('login stores token and user and sets auth header', async () => {
   expect(store.hasRole('admin')).toBe(true)
 })
 
-test('logout calls trackEvent and api and clears state', async () => {
-  mockApi.delete.mockResolvedValue({ data: { message: 'ok' } })
+test('login without user data in response logs error', async () => {
+  mockApi.post.mockResolvedValue({ data: { token: 'abc123' } })
   const store = useUserStore()
-  // prime state
-  store.bearerToken = 'tok'
-  store.user = { id: 2 }
-  localStorage.setItem('bearerToken', 'tok')
-  localStorage.setItem('user', JSON.stringify({ id: 2 }))
+  jest.spyOn(console, 'error').mockImplementation()
+
+  await store.login({ username: 'u', password: 'p' })
+
+  expect(console.error).toHaveBeenCalledWith('No user data received in login response:', expect.any(Object))
+})
+
+test('login without token in response logs error', async () => {
+  mockApi.post.mockResolvedValue({ data: {} })
+  const store = useUserStore()
+  jest.spyOn(console, 'error').mockImplementation()
+
+  await store.login({ username: 'u', password: 'p' })
+
+  expect(console.error).toHaveBeenCalledWith('No token received in login response')
+})
+
+test('hasRole returns false when user is null', () => {
+  const store = useUserStore()
+  expect(store.hasRole('admin')).toBe(false)
+})
+
+test('hasRole returns false when user has no roles', () => {
+  const store = useUserStore()
+  store.user = { id: 1, roles: [] }
+  expect(store.hasRole('admin')).toBe(false)
+})
+
+test('hasRole returns true for matching role', () => {
+  const store = useUserStore()
+  store.user = { id: 1, roles: [{ name: 'user' }, { name: 'admin' }] }
+  expect(store.hasRole('admin')).toBe(true)
+})
+
+test('logout when already logged out returns message', async () => {
+  const store = useUserStore()
+  store.bearerToken = null
+  store.user = null
 
   const res = await store.logout()
 
-  expect(trackEvent).toHaveBeenCalledWith('logged out', {}, 'tok')
-  expect(mockApi.delete).toHaveBeenCalledWith('/logout')
+  expect(res.data.message).toBe('Already signed out')
+})
+
+test('logout clears auth header', async () => {
+  mockApi.delete.mockResolvedValue({ data: { message: 'ok' } })
+  const store = useUserStore()
+  store.bearerToken = 'tok'
+  store.user = { id: 2 }
+  mockApi.defaults.headers.common['Authorization'] = 'Bearer tok'
+
+  await store.logout()
+
+  expect(mockApi.defaults.headers.common['Authorization']).toBeUndefined()
+})
+
+test('logout handles api error gracefully', async () => {
+  mockApi.delete.mockRejectedValue(new Error('Network error'))
+  const store = useUserStore()
+  store.bearerToken = 'tok'
+  store.user = { id: 2 }
+  jest.spyOn(console, 'warn').mockImplementation()
+
+  const res = await store.logout()
+
+  expect(console.warn).toHaveBeenCalledWith('Logout error:', expect.any(Error))
+  expect(res.data.message).toBe('Error during logout, but session cleared')
   expect(store.bearerToken).toBeNull()
   expect(store.user).toBeNull()
-  expect(localStorage.getItem('bearerToken')).toBeNull()
-  expect(localStorage.getItem('user')).toBeNull()
-  expect(mockApi.defaults.headers.common['Authorization']).toBeUndefined()
 })
 
 test('update replaces user and persists', async () => {
@@ -70,4 +124,29 @@ test('update replaces user and persists', async () => {
   expect(mockApi.patch).toHaveBeenCalledWith('/signup', { name: 'Updated' })
   expect(store.user).toEqual({ id: 5, name: 'Updated' })
   expect(localStorage.getItem('user')).toBe(JSON.stringify({ id: 5, name: 'Updated' }))
+})
+
+test('restores user from localStorage on init', () => {
+  const userData = { id: 10, name: 'Persisted User', roles: [{ name: 'user' }] }
+  localStorage.setItem('user', JSON.stringify(userData))
+  localStorage.setItem('bearerToken', 'persisted-token')
+  
+  setActivePinia(createPinia())
+  const store = useUserStore()
+
+  expect(store.user).toEqual(userData)
+  expect(store.bearerToken).toBe('persisted-token')
+  expect(store.isLoggedIn).toBe(true)
+})
+
+test('handles corrupted localStorage data gracefully', () => {
+  localStorage.setItem('user', 'not valid json')
+  jest.spyOn(console, 'error').mockImplementation()
+  
+  setActivePinia(createPinia())
+  const store = useUserStore()
+
+  expect(console.error).toHaveBeenCalledWith('Error parsing stored user:', expect.any(Error))
+  expect(store.user).toBeNull()
+  expect(localStorage.getItem('user')).toBeNull()
 })

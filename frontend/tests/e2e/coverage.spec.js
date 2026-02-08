@@ -72,3 +72,80 @@ test('signup button visible on login page', async ({ page }, testInfo) => {
   expect(out).not.toBeNull()
 })
 
+test('signup page renders form fields', async ({ page }, testInfo) => {
+  await page.goto('/signup')
+  
+  // Check for email input
+  const emailInput = page.locator('input[type="email"]')
+  await expect(emailInput).toBeVisible()
+  
+  // Check for password input
+  const passwordInput = page.locator('input[type="password"]')
+  await expect(passwordInput).toBeVisible()
+  
+  // Check for submit button
+  const submitButton = page.locator('button[type="submit"]')
+  await expect(submitButton).toBeVisible()
+
+  const out = await collectCoverage(page, testInfo.title.replace(/\s+/g, '-'))
+  expect(out).not.toBeNull()
+})
+
+test('dashboard view loads when navigating', async ({ page }, testInfo) => {
+  await page.goto('/dashboard')
+  
+  // Page should load without error
+  await expect(page).not.toHaveTitle(/error|404/i)
+
+  const out = await collectCoverage(page, testInfo.title.replace(/\s+/g, '-'))
+  expect(out).not.toBeNull()
+})
+
+test('account page navigates from toolbar', async ({ page }, testInfo) => {
+  // Note: This test assumes we can navigate to account without being logged in
+  // In a real scenario, this might redirect to login
+  await page.goto('/account')
+  
+  // Page should load
+  await expect(page).not.toHaveTitle(/error|500/i)
+
+  const out = await collectCoverage(page, testInfo.title.replace(/\s+/g, '-'))
+  expect(out).not.toBeNull()
+})
+
+test('roles page accessible', async ({ page }, testInfo) => {
+  // Navigate to roles page
+  await page.goto('/roles')
+  
+  // Page should load
+  await expect(page).not.toHaveTitle(/error|500/i)
+
+  const out = await collectCoverage(page, testInfo.title.replace(/\s+/g, '-'))
+  expect(out).not.toBeNull()
+})
+
+test('users page accessible', async ({ page }, testInfo) => {
+  // Navigate to users page
+  await page.goto('/users')
+  
+  // Page should load
+  await expect(page).not.toHaveTitle(/error|500/i)
+
+  const out = await collectCoverage(page, testInfo.title.replace(/\s+/g, '-'))
+  expect(out).not.toBeNull()
+})
+
+test('toolbar title navigates to dashboard', async ({ page }, testInfo) => {
+  await page.goto('/login')
+  
+  // Click the app title to navigate to dashboard
+  const titleLink = page.locator('a').first()
+  await titleLink.click()
+  
+  // Should navigate away from login
+  await page.waitForURL(/dashboard|\//i)
+
+  const out = await collectCoverage(page, testInfo.title.replace(/\s+/g, '-'))
+  expect(out).not.toBeNull()
+})
+
