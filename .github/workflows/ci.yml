@@ -18,6 +18,11 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       
+      - name: Fix Gemfile.lock platform
+        run: |
+          cd backend
+          docker run --rm -v $(pwd):/app -w /app ruby:4.0.1 sh -c "bundle lock --add-platform x86_64-linux"
+      
       - name: Build images
         run: docker compose build backend
       
@@ -44,6 +49,9 @@ jobs:
       
       - name: Build images
         run: docker compose build frontend
+      
+      - name: Install dependencies
+        run: docker compose run --rm frontend yarn install
       
       - name: Run Jest unit tests
         run: docker compose run --rm frontend yarn test:coverage
