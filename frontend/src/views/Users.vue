@@ -174,7 +174,6 @@ const deleteRole = async(r) => {
             fetchUser(user.value)
     }
     catch(error){
-        console.log(error)
         const e = error.response.data.errors || ['An unknown error occurred']
         showSnackbar(e, 'error')
     }
