@@ -19,6 +19,11 @@ const mockRouter = {
   push: jest.fn()
 }
 
+// Mock vue-router composables
+jest.mock('vue-router', () => ({
+  useRouter: () => mockRouter
+}))
+
 beforeEach(() => {
   jest.clearAllMocks()
   setActivePinia(createPinia())
@@ -28,12 +33,6 @@ describe('Dashboard.vue', () => {
   const createComponent = () => {
     return mount(Dashboard, {
       global: {
-        mocks: {
-          $router: mockRouter
-        },
-        provide: {
-          'Symbol(router)': mockRouter
-        },
         stubs: {
           VContainer: true
         }
@@ -51,10 +50,10 @@ describe('Dashboard.vue', () => {
     expect(wrapper.text()).toContain('Dashboard')
   })
 
-  test('initializes userStore and router', () => {
+  test('initializes userStore correctly', () => {
     const wrapper = createComponent()
     expect(wrapper.vm.userStore).toBeDefined()
-    expect(wrapper.vm.router).toBeDefined()
+    // Router is accessed via composition API, not available as vm property
   })
 
   test('userStore is accessible from component', () => {

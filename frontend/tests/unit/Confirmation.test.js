@@ -21,6 +21,12 @@ const mockRoute = {
   }
 }
 
+// Mock vue-router composables
+jest.mock('vue-router', () => ({
+  useRouter: () => mockRouter,
+  useRoute: () => mockRoute
+}))
+
 const mockShowSnackbar = jest.fn()
 
 beforeEach(() => {
@@ -32,14 +38,8 @@ describe('Confirmation.vue', () => {
   const createComponent = () => {
     return mount(Confirmation, {
       global: {
-        mocks: {
-          $router: mockRouter,
-          $route: mockRoute
-        },
         provide: {
           showSnackbar: mockShowSnackbar,
-          'Symbol(router)': mockRouter,
-          'Symbol(route location)': mockRoute
         },
         stubs: {
           VContainer: true,

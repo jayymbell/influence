@@ -19,6 +19,11 @@ const mockRouter = {
   push: jest.fn()
 }
 
+// Mock vue-router composables
+jest.mock('vue-router', () => ({
+  useRouter: () => mockRouter
+}))
+
 const mockShowSnackbar = jest.fn()
 
 beforeEach(() => {

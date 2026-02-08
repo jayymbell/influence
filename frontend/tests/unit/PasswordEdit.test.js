@@ -17,9 +17,15 @@ const mockRouter = {
 
 const mockRoute = {
   query: {
-    reset_password_token: 'test-reset-token-123'
+    reset_password_token: 'test-token-123'
   }
 }
+
+// Mock vue-router composables
+jest.mock('vue-router', () => ({
+  useRouter: () => mockRouter,
+  useRoute: () => mockRoute
+}))
 
 const mockShowSnackbar = jest.fn()
 
@@ -32,10 +38,6 @@ describe('PasswordEdit.vue', () => {
   const createComponent = () => {
     return mount(PasswordEdit, {
       global: {
-        mocks: {
-          $router: mockRouter,
-          $route: mockRoute
-        },
         provide: {
           showSnackbar: mockShowSnackbar,
           'Symbol(router)': mockRouter,
@@ -106,7 +108,7 @@ describe('PasswordEdit.vue', () => {
 
     expect(mockApi.put).toHaveBeenCalledWith('/password', {
       user: {
-        reset_password_token: 'test-reset-token-123',
+        reset_password_token: 'test-token-123',
         password: 'newpassword123',
         password_confirmation: 'newpassword123'
       }
