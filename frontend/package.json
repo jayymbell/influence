@@ -29,6 +29,10 @@
     "vuetify": "^3.9.6"
   },
   "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.1",
+    "vite": "^7.1.11",
+    "vite-plugin-istanbul": "^7.2.1",
+    "cross-env": "^7.0.3",
     "@babel/core": "^7.22.9",
     "@babel/preset-env": "^7.22.9",
     "@playwright/test": "^1.40.0",
