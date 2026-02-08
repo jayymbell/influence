@@ -34,7 +34,7 @@
     methods: {
       async requestPasswordReset() {
         try {
-          if(this.email === '') {
+          if(this.email.trim() === '') {
           this.showSnackbar(['Please enter your email address.'], 'error')
           return
         }

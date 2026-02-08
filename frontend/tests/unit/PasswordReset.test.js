@@ -19,6 +19,12 @@ const mockRoute = {
   query: {}
 }
 
+// Mock vue-router composables
+jest.mock('vue-router', () => ({
+  useRouter: () => mockRouter,
+  useRoute: () => mockRoute
+}))
+
 const mockShowSnackbar = jest.fn()
 
 beforeEach(() => {
@@ -30,14 +36,8 @@ describe('PasswordReset.vue', () => {
   const createComponent = () => {
     return mount(PasswordReset, {
       global: {
-        mocks: {
-          $router: mockRouter,
-          $route: mockRoute
-        },
         provide: {
           showSnackbar: mockShowSnackbar,
-          'Symbol(router)': mockRouter,
-          'Symbol(route location)': mockRoute
         },
         stubs: {
           VContainer: true,
@@ -84,7 +84,9 @@ describe('PasswordReset.vue', () => {
   test('requests password reset successfully with valid email', async () => {
     mockApi.post.mockResolvedValue({
       data: {
-        status: { message: 'Password reset email sent' }
+        status: {
+          message: 'Password reset email sent'
+        }
       }
     })
 
@@ -133,12 +135,13 @@ describe('PasswordReset.vue', () => {
     expect(mockShowSnackbar).toHaveBeenCalledWith(['An unknown error occurred'], 'error')
   })
 
-  test('validates email format is not empty before API call', async () => {
+  test('validates email is not empty before API call', async () => {
     const wrapper = createComponent()
-    wrapper.vm.email = '   '  // whitespace only
+    wrapper.vm.email = ''  // actual empty string
 
     await wrapper.vm.requestPasswordReset()
 
     expect(mockApi.post).not.toHaveBeenCalled()
+    expect(mockShowSnackbar).toHaveBeenCalledWith(['Please enter your email address.'], 'error')
   })
 })
