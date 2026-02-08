@@ -78,7 +78,7 @@ const useUserStore = defineStore("UserStore", () => {
             // Update auth header for future requests
             setAuthHeader(response.data.token)
             // Track login event with new token
-            await trackEvent('logged in', {}, response.data.token)
+            await trackEvent('logged in', {})
         } else {
             console.error('No token received in login response')
         }
@@ -94,7 +94,7 @@ const useUserStore = defineStore("UserStore", () => {
         
         try {
           // Track the logout event first while we still have valid auth
-          await trackEvent("logged out", {}, token)
+          await trackEvent("logged out", {})
           
           // Then try to log out on the server
           const response = await api.delete(`/logout`)
