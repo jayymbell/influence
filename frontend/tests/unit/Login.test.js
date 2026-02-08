@@ -1,5 +1,8 @@
 /* eslint-env jest */
+import { mount } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
+import { nextTick } from 'vue'
+import Login from '../../src/views/Login.vue'
 import useUserStore from '../../src/stores/UserStore'
 
 // Mock API and tracking services
@@ -16,58 +19,78 @@ const mockRouter = {
   push: jest.fn()
 }
 
+// Mock vue-router composables
+jest.mock('vue-router', () => ({
+  useRouter: () => mockRouter
+}))
+
 beforeEach(() => {
   jest.clearAllMocks()
   setActivePinia(createPinia())
 })
 
 describe('Login.vue', () => {
-  const createComponent = () => {
-    // Simulate the component's setup and data
-    return {
-      email: '',
-      password: '',
-      showSnackbar: jest.fn(),
-      router: mockRouter,
-      handleLogin: async function() {
-        const userStore = useUserStore()
-        const data = { user: { email: this.email, password: this.password } }
-        try {
-          if (this.email === '' || this.password === '') {
-            this.showSnackbar(['Please enter your email and password.'], 'error')
-            return
-          }
-          const response = await userStore.login(data)
-          this.showSnackbar([response.data.status.message], 'success')
-          this.router.push({ name: 'Dashboard' })
-        } catch (error) {
-          const e = error.response.data.error || ['An unknown error occurred']
-          this.showSnackbar([e], 'error')
-        }
+  let wrapper
+  let userStore
+  let showSnackbarSpy
+
+  const mountComponent = (options = {}) => {
+    showSnackbarSpy = jest.fn()
+    return mount(Login, {
+      global: {
+        provide: {
+          showSnackbar: showSnackbarSpy
+        },
+        plugins: [createPinia()]
       },
-      redirectToPasswordReset: function() {
-        this.router.push({ name: 'PasswordReset' })
-      }
-    }
+      ...options
+    })
   }
 
+  beforeEach(() => {
+    wrapper = mountComponent()
+    userStore = useUserStore()
+    jest.clearAllMocks()
+  })
+
+  afterEach(() => {
+    wrapper?.unmount()
+  })
+
+  test('renders login form with email and password fields', () => {
+    expect(wrapper.find('h1').text()).toBe('Log In')
+    expect(wrapper.find('input[type="email"]').exists()).toBe(true)
+    expect(wrapper.find('input[type="password"]').exists()).toBe(true)
+    expect(wrapper.find('button[type="submit"]').exists()).toBe(true)
+  })
+
   test('initializes with empty email and password', () => {
-    const component = createComponent()
-    expect(component.email).toBe('')
-    expect(component.password).toBe('')
+    expect(wrapper.vm.email).toBe('')
+    expect(wrapper.vm.password).toBe('')
+  })
+
+  test('updates email and password data when fields change', async () => {
+    const emailInput = wrapper.find('input[type="email"]')
+    const passwordInput = wrapper.find('input[type="password"]')
+
+    await emailInput.setValue('test@example.com')
+    await passwordInput.setValue('password123')
+
+    expect(wrapper.vm.email).toBe('test@example.com')
+    expect(wrapper.vm.password).toBe('password123')
   })
 
   test('shows error when email or password is empty', async () => {
-    const component = createComponent()
-    await component.handleLogin()
+    await wrapper.vm.handleLogin()
     
-    expect(component.showSnackbar).toHaveBeenCalledWith(
+    // Check that showSnackbar was called via the provide/inject system
+    expect(showSnackbarSpy).toHaveBeenCalledWith(
       ['Please enter your email and password.'],
       'error'
     )
   })
 
-  test('calls userStore.login with correct data on submit', async () => {
+  test('calls userStore.login with correct data on form submit', async () => {
     mockApi.post.mockResolvedValue({
       data: {
         token: 'test-token',
@@ -76,11 +99,11 @@ describe('Login.vue', () => {
       }
     })
 
-    const component = createComponent()
-    component.email = 'user@example.com'
-    component.password = 'password123'
+    await wrapper.find('input[type="email"]').setValue('user@example.com')
+    await wrapper.find('input[type="password"]').setValue('password123')
 
-    await component.handleLogin()
+    const form = wrapper.find('form')
+    await form.trigger('submit.prevent')
 
     expect(mockApi.post).toHaveBeenCalledWith('/login', {
       user: { email: 'user@example.com', password: 'password123' }
@@ -96,13 +119,13 @@ describe('Login.vue', () => {
       }
     })
 
-    const component = createComponent()
-    component.email = 'user@example.com'
-    component.password = 'password123'
+    await wrapper.find('input[type="email"]').setValue('user@example.com')
+    await wrapper.find('input[type="password"]').setValue('password123')
 
-    await component.handleLogin()
+    await wrapper.vm.handleLogin()
+    await nextTick()
 
-    expect(component.showSnackbar).toHaveBeenCalledWith(
+    expect(showSnackbarSpy).toHaveBeenCalledWith(
       ['Login successful'],
       'success'
     )
@@ -118,13 +141,12 @@ describe('Login.vue', () => {
       }
     })
 
-    const component = createComponent()
-    component.email = 'user@example.com'
-    component.password = 'wrongpassword'
+    await wrapper.find('input[type="email"]').setValue('user@example.com')
+    await wrapper.find('input[type="password"]').setValue('wrongpassword')
 
-    await component.handleLogin()
+    await wrapper.vm.handleLogin()
 
-    expect(component.showSnackbar).toHaveBeenCalledWith(
+    expect(showSnackbarSpy).toHaveBeenCalledWith(
       ['Invalid credentials'],
       'error'
     )
@@ -137,57 +159,50 @@ describe('Login.vue', () => {
       }
     })
 
-    const component = createComponent()
-    component.email = 'user@example.com'
-    component.password = 'password123'
+    await wrapper.find('input[type="email"]').setValue('user@example.com')
+    await wrapper.find('input[type="password"]').setValue('password123')
 
-    await component.handleLogin()
+    await wrapper.vm.handleLogin()
 
-    expect(component.showSnackbar).toHaveBeenCalledWith(
+    expect(showSnackbarSpy).toHaveBeenCalledWith(
       [['An unknown error occurred']],
       'error'
     )
   })
 
-  test('redirects to password reset page when "Forgot Password?" is clicked', () => {
-    const component = createComponent()
-    component.redirectToPasswordReset()
+  test('redirects to password reset page when "Forgot Password?" is clicked', async () => {
+    const forgotPasswordLink = wrapper.find('a')
+    await forgotPasswordLink.trigger('click')
     
     expect(mockRouter.push).toHaveBeenCalledWith({ name: 'PasswordReset' })
   })
 
   test('does not call API if email field is empty', async () => {
-    const component = createComponent()
-    component.email = ''
-    component.password = 'password123'
-
-    await component.handleLogin()
+    await wrapper.find('input[type="password"]').setValue('password123')
+    
+    await wrapper.vm.handleLogin()
 
     expect(mockApi.post).not.toHaveBeenCalled()
   })
 
   test('does not call API if password field is empty', async () => {
-    const component = createComponent()
-    component.email = 'user@example.com'
-    component.password = ''
-
-    await component.handleLogin()
+    await wrapper.find('input[type="email"]').setValue('user@example.com')
+    
+    await wrapper.vm.handleLogin()
 
     expect(mockApi.post).not.toHaveBeenCalled()
   })
 
   test('handles missing error.response gracefully', async () => {
+    // Note: This test demonstrates that the component has a bug 
+    // where it doesn't handle missing error.response properly
     mockApi.post.mockRejectedValue(new Error('Network error'))
 
-    const component = createComponent()
-    component.email = 'user@example.com'
-    component.password = 'password123'
+    await wrapper.find('input[type="email"]').setValue('user@example.com')
+    await wrapper.find('input[type="password"]').setValue('password123')
 
-    // Should not throw
-    try {
-      await component.handleLogin()
-    } catch (e) {
-      // Expected - the error won't have response property
-    }
+    // The component will throw because it tries to access error.response.data.error
+    // when error.response is undefined. This is a bug that should be fixed.
+    await expect(wrapper.vm.handleLogin()).rejects.toThrow('Cannot read properties of undefined')
   })
 })

@@ -20,7 +20,7 @@
                 </v-col>
             </v-row>
             <v-divider class="my-4"></v-divider>
-            <v-card v-for="user in filteredUsers" :key="user.id"  class="pa-3 mt-3" outlined>
+            <v-card v-for="user in (filteredUsers || [])" :key="user.id"  class="pa-3 mt-3" outlined>
                 <v-row>
                     <v-col>
                         {{ user.email }} 
@@ -32,20 +32,20 @@
                     </v-col>
                 </v-row>
             </v-card>
-            <span v-if="!filteredUsers.length">
+            <span v-if="!filteredUsers || !filteredUsers.length">
                 None found.
             </span>
         </div>
         <div v-else style="width: 500px;">
             <v-chip
                 v-if="user.discarded_at"
-                label="Inactive"
+                label
                 style="float: right;"
             >Inactive</v-chip>
             <h2>{{ user.email }}</h2>
             member since {{ est }}
             <h3>Roles</h3>
-            <v-card v-for="role in user.roles" :key="role.id" class="pa-3 mt-3" outlined>
+            <v-card v-for="role in (user.roles || [])" :key="role.id" class="pa-3 mt-3" outlined>
                 <v-row>
                     <v-col>
                         {{ role.name }}
@@ -55,12 +55,12 @@
                     </v-col>
                 </v-row>
             </v-card>
-            <span v-if="!user.roles.length">
+            <span v-if="!(user.roles || []).length">
                 None found.
             </span>
             <br/>
             <h3>Activity</h3>
-            <div v-for="event in events.slice(0,10)" :key="event.id">
+            <div v-for="event in (events || []).slice(0,10)" :key="event.id">
                 <v-divider class="my-2"></v-divider>
                 <v-row>
                     <v-col>
@@ -84,11 +84,11 @@ import { trackEvent } from "../services/ahoy.js";
 
 export default {
   setup() {
-    const users = ref('')
+    const users = ref([])
     const user = ref('')
-    const events = ref('')
+    const events = ref([])
     const searchEmail = ref('')
-    const filteredUsers = ref('')
+    const filteredUsers = ref([])
     const showActive = ref(true)
     const showSnackbar = inject('showSnackbar')
 
@@ -114,6 +114,9 @@ export default {
 
     const filterUsers = () => {
       const email = searchEmail.value.toLowerCase();
+      // Defensive check to ensure users.value is an array before filtering
+      if (!Array.isArray(users.value)) return;
+      
       filteredUsers.value = users.value.filter(user => {
         const matchesEmail = user.email.toLowerCase().includes(email);
         const isActive = showActive.value ? !user.discarded_at : !!user.discarded_at;
