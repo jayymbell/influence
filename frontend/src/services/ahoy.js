@@ -1,15 +1,10 @@
 import api from '../services/api'
 
-export function trackEvent(name, properties = {}, authToken = null) {
-  if (authToken) {
+export function trackEvent(name, properties = {}) {
+
     return api.post(`/users/events`, {
       name,
       properties
-    }, {
-      headers: {
-        'Authorization': `Bearer ${authToken}`
-      }
     });
-  }
-  return Promise.resolve();
+  
 }
