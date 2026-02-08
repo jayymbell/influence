@@ -26,6 +26,9 @@ jobs:
       - name: Build images
         run: docker compose build backend
       
+      - name: Install gems for CI platform
+        run: docker compose run --rm backend bundle install
+      
       - name: Run RSpec tests with coverage
         run: docker compose run --rm backend bundle exec rspec
       
@@ -62,11 +65,20 @@ jobs:
       - name: Merge coverage reports
         run: docker compose run --rm frontend yarn coverage:merge
       
-      - name: Upload frontend coverage
+      - name: Upload frontend coverage HTML report
         uses: actions/upload-artifact@v4
         with:
-          name: frontend-coverage
-          path: frontend/coverage/
+          name: frontend-coverage-html
+          path: frontend/coverage/lcov-report/
+          retention-days: 30
+      
+      - name: Upload frontend coverage data
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage-lcov
+          path: |
+            frontend/coverage/lcov.info
+            frontend/coverage/coverage-final.json
           retention-days: 30
       
       - name: Upload Playwright test results
