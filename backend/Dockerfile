@@ -1,4 +1,4 @@
-FROM ruby:3.3.7
+FROM ruby:4.0.1
 
 RUN apt-get update && apt-get install -y postgresql-client vim git
 
