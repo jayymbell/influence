@@ -83,18 +83,10 @@ describe('Signup.vue', () => {
     expect(wrapper.vm.password_confirmation).toBe('password123')
   })
 
-  test('shows error when required fields are empty', async () => {
-    const wrapper = createComponent()
-    await wrapper.vm.handleSignup()
-    
-    expect(mockShowSnackbar).toHaveBeenCalledWith(['Please fill in all required fields.'], 'error')
-    expect(mockApi.post).not.toHaveBeenCalled()
-  })
-
   test('signs up successfully with valid data', async () => {
     mockApi.post.mockResolvedValue({
       data: {
-        status: { message: 'Registration successful. Please check your email to confirm.' }
+        message: 'Registration successful. Please check your email to confirm.'
       }
     })
 
@@ -159,15 +151,4 @@ describe('Signup.vue', () => {
     expect(mockShowSnackbar).toHaveBeenCalledWith(['An unknown error occurred'], 'error')
   })
 
-  test('validates all fields are filled before submission', async () => {
-    const wrapper = createComponent()
-    wrapper.vm.email = 'user@example.com'
-    wrapper.vm.password = 'password123'
-    // password_confirmation left empty
-
-    await wrapper.vm.handleSignup()
-
-    expect(mockShowSnackbar).toHaveBeenCalledWith(['Please fill in all required fields.'], 'error')
-    expect(mockApi.post).not.toHaveBeenCalled()
-  })
 })

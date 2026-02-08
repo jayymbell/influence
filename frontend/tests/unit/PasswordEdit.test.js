@@ -111,6 +111,8 @@ describe('PasswordEdit.vue', () => {
         password_confirmation: 'newpassword123'
       }
     })
+    expect(mockShowSnackbar).toHaveBeenCalledWith(['Password reset successfully'], 'success')
+    expect(mockRouter.push).toHaveBeenCalledWith({ name: 'Login' })
   })
 
   test('handles password reset API errors', async () => {

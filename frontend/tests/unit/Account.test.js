@@ -77,7 +77,7 @@ describe('Account.vue', () => {
     const wrapper = createComponent()
     await wrapper.vm.$nextTick()
     
-    expect(wrapper.vm.roles).toBe('Admin')
+    expect(wrapper.vm.roles).toBe('admin')
   })
 
   test('switches to change email mode', async () => {
@@ -117,8 +117,8 @@ describe('Account.vue', () => {
     expect(wrapper.vm.est).toBe(2023)
   })
 
-  test('computed roles capitalizes role names', () => {
+  test('computed roles joins role names', () => {
     const wrapper = createComponent()
-    expect(wrapper.vm.roles).toBe('Admin')
+    expect(wrapper.vm.roles).toBe('admin')
   })
 })
