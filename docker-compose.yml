@@ -20,8 +20,19 @@ services:
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
       DATABASE_NAME: ${POSTGRES_DB:-my_app_development}
       FRONTEND_URL: http://localhost:5173
+      AI_SERVICE_URL: http://ai:8000
     depends_on:
       - db
+  ai:
+    build: ./ai/
+    volumes:
+      - ./ai/:/ai
+    ports:
+      - "8000:8000"
+    environment:
+      BACKEND_URL: http://backend:3000
+    depends_on:
+      - backend
   frontend:
     build: ./frontend/
     volumes:

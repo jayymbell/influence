@@ -62,6 +62,11 @@ Rails.application.configure do
   # Uncomment if you wish to allow Action Cable access from any origin.
   # config.action_cable.disable_request_forgery_protection = true
 
+  # Allow Docker Compose service hostnames.
+  config.hosts << "backend"
+  config.hosts << "ai"
+  config.hosts << /.*\.local/
+
   # Raise error when a before_action's only/except options reference missing actions.
   config.action_controller.raise_on_missing_callback_actions = true
 
