@@ -1,9 +1,12 @@
 <script setup>
 import useUserStore from './stores/UserStore'
+import useSidebarStore from './stores/SidebarStore'
+import SidebarMenu from './components/SidebarMenu.vue'
 import { computed, ref, provide } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 const userStore = useUserStore()
+const sidebarStore = useSidebarStore()
 const isLoggedIn = computed(() => userStore.isLoggedIn)
 const route = useRoute()
 const router = useRouter()
@@ -19,10 +22,6 @@ const goToLogin = () => {
 
 const goToSignUp = () => {
   router.push({ name: 'Signup' })
-}
-
-const goToAccount = () => {
-  router.push({ name: 'Account' })
 }
 
 const goToDashboard = () => {
@@ -49,28 +48,17 @@ provide('showSnackbar', showSnackbar)
 <template>
   <v-app>
     <v-app-bar theme="dark">
+      <v-app-bar-nav-icon
+        v-if="isLoggedIn"
+        @click="sidebarStore.toggle()"
+      />
       <v-toolbar-title><a @click="goToDashboard">My App</a></v-toolbar-title>
       <v-spacer></v-spacer>
-      <v-btn text v-if="isLoggedIn" @click="goToAccount">Account</v-btn>
-      <v-menu offset-y v-if="isLoggedIn && userStore.hasRole('admin')">
-        <template v-slot:activator="{ props }">
-          <v-btn v-bind="props">
-            Admin
-          </v-btn>
-        </template>
-        <v-list>
-          <v-list-item to="/roles">
-            <v-list-item-title>Roles</v-list-item-title>
-          </v-list-item>
-          <v-list-item to="/users">
-            <v-list-item-title>Users</v-list-item-title>
-          </v-list-item>
-        </v-list>
-    </v-menu>
-      <v-btn v-if="isLoggedIn" @click="logout" style="margin-left: 20px;">Log out</v-btn>
+      <v-btn v-if="isLoggedIn" @click="logout">Log out</v-btn>
       <v-btn text v-else-if="!isLoggedIn && route.name !== 'Login'" @click="goToLogin">Log In</v-btn>
       <v-btn text v-else-if="route.name === 'Login'" @click="goToSignUp">Sign Up</v-btn>
   </v-app-bar>
+  <SidebarMenu v-if="isLoggedIn" />
   <v-main>
     <router-view />
   </v-main>
