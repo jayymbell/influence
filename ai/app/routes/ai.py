@@ -4,6 +4,8 @@ import httpx
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from app.crews.general_crew import run_general_crew
+
 router = APIRouter()
 
 BACKEND_URL = os.getenv("BACKEND_URL", "http://backend:3000")
@@ -22,22 +24,21 @@ class PromptResponse(BaseModel):
 @router.post("/prompt", response_model=PromptResponse)
 async def handle_prompt(body: PromptRequest):
     """
-    Example AI endpoint.
+    AI prompt endpoint powered by the CrewAI general assistant.
 
-    Receives a prompt, processes it, and returns a result.
-    Demonstrates calling back to the Rails backend over HTTP.
+    Receives a prompt, runs it through the general assistant crew,
+    and returns the agent's answer.
     """
-    # --- Example: call back to the Rails backend ---------------------------
-    # Uncomment when you have an endpoint to call:
-    #
-    # async with httpx.AsyncClient() as client:
-    #     resp = await client.get(f"{BACKEND_URL}/up")
-    #     resp.raise_for_status()
-
-    # Placeholder AI logic – replace with your model / LLM call
-    result = f"Echo: {body.prompt}"
-
-    return PromptResponse(result=result)
+    try:
+        crew_result = await run_general_crew(description=body.prompt)
+        return PromptResponse(result=crew_result["answer"])
+    except ValueError as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Crew execution failed: {exc}",
+        )
 
 
 @router.get("/ping-backend")

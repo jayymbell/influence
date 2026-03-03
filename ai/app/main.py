@@ -3,7 +3,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routes import health, ai
+from app.routes import health, ai, copilot, crew
 
 BACKEND_URL = os.getenv("BACKEND_URL", "http://backend:3000")
 
@@ -23,3 +23,5 @@ app.add_middleware(
 
 app.include_router(health.router)
 app.include_router(ai.router, prefix="/ai", tags=["ai"])
+app.include_router(copilot.router, prefix="/copilot", tags=["copilot"])
+app.include_router(crew.router, prefix="/crew", tags=["crew"])
