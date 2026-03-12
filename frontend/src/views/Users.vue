@@ -1,7 +1,7 @@
 <template>
     <v-container>
         <h1>Users</h1>
-        <div v-if="!user" style="width: 500px;">
+        <div v-if="!user">
             <v-row>
                 <v-col cols="8">
             <v-text-field
@@ -36,7 +36,7 @@
                 None found.
             </span>
         </div>
-        <div v-else style="width: 500px;">
+        <div v-else>
             <v-chip
                 v-if="user.discarded_at"
                 label

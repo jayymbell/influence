@@ -14,6 +14,7 @@ const isAdmin = computed(() => userStore.hasRole('admin'))
 const menuItems = computed(() => {
   const items = [
     { title: 'Dashboard', icon: 'mdi-view-dashboard', to: '/', show: true },
+    { title: 'General Assistant', icon: 'mdi-forum-outline', to: '/conversations', show: isLoggedIn.value },
     { title: 'Account', icon: 'mdi-account', to: '/account', show: isLoggedIn.value },
   ]
 

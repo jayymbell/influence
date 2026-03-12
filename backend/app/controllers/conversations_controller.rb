@@ -97,6 +97,10 @@ class ConversationsController < ApplicationController
   end
 
   def conversation_params
-    params.expect(conversation: [:title])
+    if params[:conversation].present?
+      params.expect(conversation: [:title])
+    else
+      {}
+    end
   end
 end

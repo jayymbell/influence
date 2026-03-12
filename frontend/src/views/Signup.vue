@@ -1,5 +1,6 @@
 <template>
-  <v-container style="margin-top: 25%;">
+  <v-container class="d-flex align-center justify-center" style="height: calc(100vh - 64px);">
+    <div>
     <h1>Sign Up</h1>
     <v-form @submit.prevent="handleSignup">
       <v-text-field
@@ -30,6 +31,7 @@
       </v-row>
 
     </v-form>
+    </div>
   </v-container>
 </template>
 
