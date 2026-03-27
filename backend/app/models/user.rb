@@ -14,6 +14,7 @@ class User < ApplicationRecord
   has_many :user_roles, dependent: :destroy
   has_many :roles, through: :user_roles
   has_many :refresh_tokens, dependent: :destroy
+  has_many :conversations, dependent: :destroy
 
   def active_for_authentication?
     super && !discarded?
