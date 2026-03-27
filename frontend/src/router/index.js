@@ -10,6 +10,7 @@ import PasswordReset from '../views/PasswordReset.vue'
 import Account from '../views/Account.vue'
 import Roles from '../views/Roles.vue'
 import Users from '../views/Users.vue'
+import Conversations from '../views/Conversations.vue'
 
 const routes = [
   {
@@ -76,6 +77,19 @@ const routes = [
         next()
       } else {
         next({ name: 'Dashboard' })
+      }
+    }
+  },
+  {
+    path: '/conversations',
+    name: 'Conversations',
+    component: Conversations,
+    beforeEnter: (to, from, next) => {
+      const userStore = useUserStore()
+      if (userStore.isLoggedIn) {
+        next()
+      } else {
+        next({ name: 'Login' })
       }
     }
   },
