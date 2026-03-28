@@ -5,7 +5,7 @@ services:
     volumes:
       - db_data:/var/lib/postgresql
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-my_app}
+      POSTGRES_USER: ${POSTGRES_USER:-influence}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
   backend:
     build: ./backend/
@@ -16,9 +16,9 @@ services:
       - "3000:3000"
     environment:
       DATABASE_HOST: db
-      DATABASE_USERNAME: ${POSTGRES_USER:-my_app}
+      DATABASE_USERNAME: ${POSTGRES_USER:-influence}
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
-      DATABASE_NAME: ${POSTGRES_DB:-my_app_development}
+      DATABASE_NAME: ${POSTGRES_DB:-influence_development}
       FRONTEND_URL: http://localhost:5173
       AI_SERVICE_URL: http://ai:8000
     depends_on:
