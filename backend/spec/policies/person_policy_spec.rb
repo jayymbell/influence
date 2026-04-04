@@ -29,11 +29,11 @@ RSpec.describe PersonPolicy do
     end
 
     describe 'Scope' do
-      it 'returns all kept people' do
+      it 'returns all people including discarded' do
         create_list(:person, 3)
         create(:person, :discarded)
         scope = PersonPolicy::Scope.new(user, Person).resolve
-        expect(scope.count).to eq(3)
+        expect(scope.count).to eq(4)
       end
     end
   end
@@ -62,10 +62,11 @@ RSpec.describe PersonPolicy do
     end
 
     describe 'Scope' do
-      it 'returns all kept people' do
+      it 'returns all people including discarded' do
         create_list(:person, 2)
+        create(:person, :discarded)
         scope = PersonPolicy::Scope.new(user, Person).resolve
-        expect(scope.count).to eq(2)
+        expect(scope.count).to eq(3)
       end
     end
   end

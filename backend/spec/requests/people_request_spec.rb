@@ -46,7 +46,7 @@ RSpec.describe 'People API', type: :request do
       expect(body['people'].first['display_name']).to eq('Alice Smith')
     end
 
-    it 'excludes discarded people' do
+    it 'excludes discarded people by default' do
       user = create(:user, :admin)
       create(:person)
       create(:person, :discarded)
@@ -54,6 +54,17 @@ RSpec.describe 'People API', type: :request do
 
       expect(response).to have_http_status(:ok)
       expect(json_response['people'].length).to eq(1)
+    end
+
+    it 'returns discarded people when discarded param is true' do
+      user = create(:user, :admin)
+      create(:person)
+      create(:person, :discarded)
+      get '/people', params: { discarded: 'true' }, headers: auth_headers_for(user)
+
+      expect(response).to have_http_status(:ok)
+      expect(json_response['people'].length).to eq(1)
+      expect(json_response['people'].first['discarded_at']).not_to be_nil
     end
   end
 
