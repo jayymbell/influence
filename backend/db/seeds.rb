@@ -16,7 +16,7 @@ User.find_or_initialize_by(email: 'influence-admin@example.com').tap do |user|
   user.password            ||= 'Password123!!'
   user.password_confirmation = user.password
   user.confirmed_at        ||= Time.current
-    user.system_user         = true
+  user.system_user         = true
   user.save!
   user.roles << Role.find_by!(name: 'admin') unless user.roles.exists?(name: 'admin')
 end
