@@ -1,0 +1,203 @@
+require 'rails_helper'
+
+RSpec.describe 'People API', type: :request do
+  describe 'GET /people' do
+    it 'returns people for admin users' do
+      user = create(:user, :admin)
+      create_list(:person, 3)
+      get '/people', headers: auth_headers_for(user)
+
+      expect(response).to have_http_status(:ok)
+      body = json_response
+      expect(body['message']).to match(/People found/i)
+      expect(body['people'].length).to eq(3)
+    end
+
+    it 'returns people for staff users' do
+      user = create(:user, :with_role, role_name: 'staff')
+      create_list(:person, 2)
+      get '/people', headers: auth_headers_for(user)
+
+      expect(response).to have_http_status(:ok)
+      expect(json_response['people'].length).to eq(2)
+    end
+
+    it 'returns 403 for unauthorized users' do
+      user = create(:user)
+      get '/people', headers: auth_headers_for(user)
+
+      expect(response).to have_http_status(:forbidden)
+    end
+
+    it 'returns 401 for unauthenticated requests' do
+      get '/people'
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    it 'filters by query' do
+      user = create(:user, :admin)
+      create(:person, display_name: 'Alice Smith')
+      create(:person, display_name: 'Bob Jones')
+      get '/people', params: { query: 'alice' }, headers: auth_headers_for(user)
+
+      expect(response).to have_http_status(:ok)
+      body = json_response
+      expect(body['people'].length).to eq(1)
+      expect(body['people'].first['display_name']).to eq('Alice Smith')
+    end
+
+    it 'excludes discarded people' do
+      user = create(:user, :admin)
+      create(:person)
+      create(:person, :discarded)
+      get '/people', headers: auth_headers_for(user)
+
+      expect(response).to have_http_status(:ok)
+      expect(json_response['people'].length).to eq(1)
+    end
+  end
+
+  describe 'GET /people/:id' do
+    it 'returns a person for admin' do
+      user = create(:user, :admin)
+      person = create(:person)
+      get "/people/#{person.id}", headers: auth_headers_for(user)
+
+      expect(response).to have_http_status(:ok)
+      body = json_response
+      expect(body['message']).to match(/Person found/i)
+      expect(body['person']['id']).to eq(person.id)
+    end
+
+    it 'returns 404 when person does not exist' do
+      user = create(:user, :admin)
+      get '/people/99999', headers: auth_headers_for(user)
+
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it 'returns 403 for unauthorized users' do
+      user = create(:user)
+      person = create(:person)
+      get "/people/#{person.id}", headers: auth_headers_for(user)
+
+      expect(response).to have_http_status(:forbidden)
+    end
+  end
+
+  describe 'POST /people' do
+    let(:valid_params) do
+      { person: { first_name: 'Jane', last_name: 'Doe', display_name: 'Jane Doe' } }.to_json
+    end
+
+    it 'creates a person for admin' do
+      user = create(:user, :admin)
+      post '/people', params: valid_params, headers: auth_headers_for(user)
+
+      expect(response).to have_http_status(:created)
+      body = json_response
+      expect(body['message']).to match(/Person created/i)
+      expect(body['person']['display_name']).to eq('Jane Doe')
+    end
+
+    it 'sets created_by to current user' do
+      user = create(:user, :admin)
+      post '/people', params: valid_params, headers: auth_headers_for(user)
+
+      person = Person.last
+      expect(person.created_by).to eq(user)
+    end
+
+    it 'returns 422 when required fields are missing' do
+      user = create(:user, :admin)
+      post '/people',
+           params: { person: { first_name: 'Only' } }.to_json,
+           headers: auth_headers_for(user)
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(json_response['errors']).to be_present
+    end
+
+    it 'returns 403 for unauthorized users' do
+      user = create(:user)
+      post '/people', params: valid_params, headers: auth_headers_for(user)
+
+      expect(response).to have_http_status(:forbidden)
+    end
+  end
+
+  describe 'PATCH /people/:id' do
+    it 'updates a person for admin' do
+      user = create(:user, :admin)
+      person = create(:person, display_name: 'Old Name')
+      patch "/people/#{person.id}",
+            params: { person: { display_name: 'New Name' } }.to_json,
+            headers: auth_headers_for(user)
+
+      expect(response).to have_http_status(:ok)
+      expect(json_response['person']['display_name']).to eq('New Name')
+    end
+
+    it 'sets updated_by to current user' do
+      user = create(:user, :admin)
+      person = create(:person)
+      patch "/people/#{person.id}",
+            params: { person: { display_name: 'Updated' } }.to_json,
+            headers: auth_headers_for(user)
+
+      expect(person.reload.updated_by).to eq(user)
+    end
+
+    it 'returns 422 on invalid data' do
+      user = create(:user, :admin)
+      person = create(:person)
+      patch "/people/#{person.id}",
+            params: { person: { email: 'not-valid' } }.to_json,
+            headers: auth_headers_for(user)
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(json_response['errors']).to be_present
+    end
+
+    it 'returns 403 for unauthorized users' do
+      user = create(:user)
+      person = create(:person)
+      patch "/people/#{person.id}",
+            params: { person: { display_name: 'Hack' } }.to_json,
+            headers: auth_headers_for(user)
+
+      expect(response).to have_http_status(:forbidden)
+    end
+  end
+
+  describe 'DELETE /people/:id' do
+    it 'soft deletes a person for admin' do
+      user = create(:user, :admin)
+      person = create(:person)
+      delete "/people/#{person.id}", headers: auth_headers_for(user)
+
+      expect(response).to have_http_status(:ok)
+      expect(json_response['message']).to match(/deactivated/i)
+      expect(person.reload.discarded_at).to be_present
+      expect(person.reload.deactivated_by).to eq(user)
+    end
+
+    it 'excludes discarded person from default scope' do
+      user = create(:user, :admin)
+      person = create(:person)
+      delete "/people/#{person.id}", headers: auth_headers_for(user)
+
+      get '/people', headers: auth_headers_for(user)
+      ids = json_response['people'].map { |p| p['id'] }
+      expect(ids).not_to include(person.id)
+    end
+
+    it 'returns 403 for unauthorized users' do
+      user = create(:user)
+      person = create(:person)
+      delete "/people/#{person.id}", headers: auth_headers_for(user)
+
+      expect(response).to have_http_status(:forbidden)
+    end
+  end
+end
