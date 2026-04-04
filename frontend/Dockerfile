@@ -1,4 +1,4 @@
-FROM node:20.19-bullseye
+FROM node:25.9-bullseye
 
 # use /frontend as working dir
 WORKDIR /frontend
