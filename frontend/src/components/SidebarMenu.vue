@@ -10,6 +10,7 @@ const sidebarStore = useSidebarStore()
 
 const isLoggedIn = computed(() => userStore.isLoggedIn)
 const isAdmin = computed(() => userStore.hasRole('admin'))
+const isAdminOrStaff = computed(() => userStore.hasRole('admin') || userStore.hasRole('staff'))
 
 const menuItems = computed(() => {
   const items = [
@@ -19,8 +20,9 @@ const menuItems = computed(() => {
   ]
 
   const adminItems = [
-    { divider: true, show: isAdmin.value },
-    { subtitle: 'Admin', show: isAdmin.value },
+    { divider: true, show: isAdminOrStaff.value },
+    { subtitle: 'Admin', show: isAdminOrStaff.value },
+    { title: 'People', icon: 'mdi-account-card', to: '/people', show: isAdminOrStaff.value },
     { title: 'Roles', icon: 'mdi-shield-account', to: '/roles', show: isAdmin.value },
     { title: 'Users', icon: 'mdi-account-group', to: '/users', show: isAdmin.value },
   ]

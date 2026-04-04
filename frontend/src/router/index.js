@@ -11,6 +11,7 @@ import Account from '../views/Account.vue'
 import Roles from '../views/Roles.vue'
 import Users from '../views/Users.vue'
 import Conversations from '../views/Conversations.vue'
+import People from '../views/People.vue'
 
 const routes = [
   {
@@ -113,6 +114,19 @@ const routes = [
     beforeEnter: (to, from, next) => {
       const userStore = useUserStore()
       if (userStore.isLoggedIn && userStore.hasRole('admin')) {
+        next()
+      } else {
+        next({ name: 'Dashboard' })
+      }
+    }
+  },
+  {
+    path: '/people',
+    name: 'People',
+    component: People,
+    beforeEnter: (to, from, next) => {
+      const userStore = useUserStore()
+      if (userStore.isLoggedIn && (userStore.hasRole('admin') || userStore.hasRole('staff'))) {
         next()
       } else {
         next({ name: 'Dashboard' })
