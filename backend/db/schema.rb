@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_03_02_000002) do
+ActiveRecord::Schema[8.0].define(version: 2026_04_04_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -74,6 +74,33 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_02_000002) do
     t.index ["conversation_id"], name: "index_messages_on_conversation_id"
   end
 
+  create_table "people", force: :cascade do |t|
+    t.bigint "user_id"
+    t.string "first_name", null: false
+    t.string "last_name", null: false
+    t.string "display_name", null: false
+    t.string "email"
+    t.string "phone"
+    t.string "title"
+    t.string "organization_name"
+    t.text "notes"
+    t.datetime "discarded_at"
+    t.datetime "deactivated_at"
+    t.bigint "created_by_id"
+    t.bigint "updated_by_id"
+    t.bigint "deactivated_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index "lower((display_name)::text)", name: "index_people_on_lower_display_name"
+    t.index "lower((email)::text)", name: "index_people_on_lower_email", where: "(email IS NOT NULL)"
+    t.index ["created_by_id"], name: "index_people_on_created_by_id"
+    t.index ["deactivated_by_id"], name: "index_people_on_deactivated_by_id"
+    t.index ["discarded_at"], name: "index_people_on_discarded_at"
+    t.index ["updated_by_id"], name: "index_people_on_updated_by_id"
+    t.index ["user_id"], name: "index_people_on_user_id"
+    t.index ["user_id"], name: "index_people_on_user_id_unique_when_present", unique: true, where: "(user_id IS NOT NULL)"
+  end
+
   create_table "refresh_tokens", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.string "token", null: false
@@ -125,6 +152,10 @@ ActiveRecord::Schema[8.0].define(version: 2026_03_02_000002) do
 
   add_foreign_key "conversations", "users"
   add_foreign_key "messages", "conversations"
+  add_foreign_key "people", "users"
+  add_foreign_key "people", "users", column: "created_by_id"
+  add_foreign_key "people", "users", column: "deactivated_by_id"
+  add_foreign_key "people", "users", column: "updated_by_id"
   add_foreign_key "refresh_tokens", "users"
   add_foreign_key "user_roles", "roles"
   add_foreign_key "user_roles", "users"
