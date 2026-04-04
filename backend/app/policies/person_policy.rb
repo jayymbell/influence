@@ -22,7 +22,7 @@ class PersonPolicy < ApplicationPolicy
   class Scope < ApplicationPolicy::Scope
     def resolve
       if user.admin? || user.roles.exists?(name: 'staff')
-        scope.kept
+        scope.all
       else
         scope.none
       end

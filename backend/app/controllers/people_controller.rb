@@ -7,6 +7,12 @@ class PeopleController < ApplicationController
     @people = policy_scope(Person)
     authorize Person
 
+    if params[:discarded] == 'true'
+      @people = @people.discarded
+    else
+      @people = @people.kept
+    end
+
     @people = @people.where("lower(display_name) LIKE ?", "%#{params[:query].downcase}%") if params[:query].present?
 
     page     = (params[:page] || 1).to_i
