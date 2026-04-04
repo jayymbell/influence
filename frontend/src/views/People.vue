@@ -220,4 +220,25 @@ const deletePerson = async () => {
 }
 
 onMounted(() => fetchPeople())
+
+defineExpose({
+  people,
+  loading,
+  searchQuery,
+  showActive,
+  dialogOpen,
+  deleteDialogOpen,
+  editTarget,
+  form,
+  fetchPeople,
+  debouncedSearch,
+  onClearSearch,
+  openCreateDialog,
+  openEditDialog,
+  closeDialog,
+  openDeleteDialog,
+  createPerson,
+  updatePerson,
+  deletePerson
+})
 </script>
