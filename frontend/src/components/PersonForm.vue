@@ -9,7 +9,7 @@
     <v-col cols="12" sm="4">
       <v-text-field v-model="form.display_name" label="Display Name *" />
     </v-col>
-    <v-col cols="12" sm="4">
+    <v-col v-if="!hideEmail" cols="12" sm="4">
       <v-text-field v-model="form.email" label="Email" type="email" />
     </v-col>
     <v-col cols="12" sm="4">
@@ -21,7 +21,7 @@
     <v-col cols="12">
       <v-text-field v-model="form.organization_name" label="Organization" />
     </v-col>
-    <v-col cols="12">
+    <v-col v-if="!hideNotes" cols="12">
       <v-textarea v-model="form.notes" label="Notes" rows="2" auto-grow />
     </v-col>
   </v-row>
@@ -33,6 +33,14 @@ defineProps({
   form: {
     type: Object,
     required: true
+  },
+  hideEmail: {
+    type: Boolean,
+    default: false
+  },
+  hideNotes: {
+    type: Boolean,
+    default: false
   }
 })
 </script>

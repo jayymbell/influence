@@ -4,15 +4,15 @@ class PersonPolicy < ApplicationPolicy
   end
 
   def show?
-    admin_or_staff?
+    admin_or_staff? || own_person?
   end
 
   def create?
-    admin_or_staff?
+    admin_or_staff? || record.user == user
   end
 
   def update?
-    admin_or_staff?
+    admin_or_staff? || own_person?
   end
 
   def destroy?
@@ -33,5 +33,9 @@ class PersonPolicy < ApplicationPolicy
 
   def admin_or_staff?
     user.admin? || user.roles.exists?(name: 'staff')
+  end
+
+  def own_person?
+    record.user_id == user.id
   end
 end

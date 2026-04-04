@@ -25,7 +25,13 @@ class User < ApplicationRecord
     discarded? ? :discarded_account : super
   end
 
+  scope :non_system, -> { where(system_user: false) }
+
   def admin?
     roles.exists?(name: 'admin')
+  end
+
+  def system?
+    system_user?
   end
 end

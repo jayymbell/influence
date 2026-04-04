@@ -129,11 +129,20 @@ RSpec.describe 'People API', type: :request do
       expect(json_response['errors']).to be_present
     end
 
-    it 'returns 403 for unauthorized users' do
+    it 'allows a regular user to create their own person' do
       user = create(:user)
       post '/people', params: valid_params, headers: auth_headers_for(user)
 
-      expect(response).to have_http_status(:forbidden)
+      expect(response).to have_http_status(:created)
+      expect(json_response['person']['first_name']).to eq('Jane')
+      expect(Person.last.user).to eq(user)
+    end
+
+    it 'automatically links the person to the current regular user' do
+      user = create(:user)
+      post '/people', params: valid_params, headers: auth_headers_for(user)
+
+      expect(Person.last.user_id).to eq(user.id)
     end
   end
 

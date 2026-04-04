@@ -19,7 +19,8 @@ export const createTestRouter = () => {
     { path: '/account', name: 'Account', component: { template: '<div>Account</div>' } },
     { path: '/roles', name: 'Roles', component: { template: '<div>Roles</div>' } },
     { path: '/users', name: 'Users', component: { template: '<div>Users</div>' } },
-    { path: '/people', name: 'People', component: { template: '<div>People</div>' } }
+    { path: '/people', name: 'People', component: { template: '<div>People</div>' } },
+    { path: '/account-setup', name: 'AccountSetup', component: { template: '<div>AccountSetup</div>' } }
   ]
 
   return createRouter({

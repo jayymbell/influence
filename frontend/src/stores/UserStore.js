@@ -49,6 +49,10 @@ const useUserStore = defineStore("UserStore", () => {
     // getters
     const isLoggedIn = computed(() => bearerToken.value !== null)
 
+    const hasPerson = computed(() => !!(user.value?.person_id))
+
+    const isSystemUser = computed(() => !!(user.value?.system_user))
+
     const hasRole = (roleName) => {
         if (!user.value || !user.value.roles) return false;
         return user.value.roles.map(item => item.name).includes(roleName);
@@ -118,11 +122,16 @@ const useUserStore = defineStore("UserStore", () => {
         localStorage.setItem('user', JSON.stringify(user.value))
         return response 
     }
+
+    const setPersonId = (personId) => {
+        user.value = { ...user.value, person_id: personId }
+        localStorage.setItem('user', JSON.stringify(user.value))
+    }
     
     
     
 
-    return {user, bearerToken, isLoggedIn, login, logout, update, hasRole}
+    return {user, bearerToken, isLoggedIn, hasPerson, isSystemUser, login, logout, update, hasRole, setPersonId}
 })
 
 export default useUserStore

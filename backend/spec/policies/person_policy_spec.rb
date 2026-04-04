@@ -82,7 +82,7 @@ RSpec.describe PersonPolicy do
       expect(subject.new(user, person).show?).to be false
     end
 
-    it 'denies create' do
+    it 'denies create for an unowned person record' do
       expect(subject.new(user, person).create?).to be false
     end
 
@@ -100,6 +100,32 @@ RSpec.describe PersonPolicy do
         scope = PersonPolicy::Scope.new(user, Person).resolve
         expect(scope.count).to eq(0)
       end
+    end
+  end
+
+  context 'for a user creating their own person' do
+    let(:user) { create(:user) }
+    let(:own_person) { build(:person, user: user) }
+
+    it 'allows create when person is linked to themselves' do
+      expect(subject.new(user, own_person).create?).to be true
+    end
+  end
+
+  context 'for a user accessing their own linked person' do
+    let(:user) { create(:user) }
+    let(:own_person) { create(:person, user: user) }
+
+    it 'allows show' do
+      expect(subject.new(user, own_person).show?).to be true
+    end
+
+    it 'allows update' do
+      expect(subject.new(user, own_person).update?).to be true
+    end
+
+    it 'denies destroy' do
+      expect(subject.new(user, own_person).destroy?).to be false
     end
   end
 end

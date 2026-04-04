@@ -34,6 +34,13 @@ class PeopleController < ApplicationController
     @person = Person.new(person_params)
     @person.created_by = current_user
     @person.updated_by = current_user
+
+    # Regular users can only create a person linked to themselves
+    unless current_user.admin? || current_user.roles.exists?(name: 'staff')
+      @person.user  = current_user
+      @person.email = current_user.email
+    end
+
     authorize @person
 
     if @person.save

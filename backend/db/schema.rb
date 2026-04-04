@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_04_04_000001) do
+ActiveRecord::Schema[8.0].define(version: 2026_04_04_230348) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -143,11 +143,13 @@ ActiveRecord::Schema[8.0].define(version: 2026_04_04_000001) do
     t.datetime "confirmation_sent_at"
     t.string "unconfirmed_email"
     t.datetime "discarded_at"
+    t.boolean "system_user", default: false, null: false
     t.index ["confirmation_token"], name: "index_users_on_confirmation_token", unique: true
     t.index ["discarded_at"], name: "index_users_on_discarded_at"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["jti"], name: "index_users_on_jti", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
+    t.index ["system_user"], name: "index_users_on_system_user"
   end
 
   add_foreign_key "conversations", "users"
