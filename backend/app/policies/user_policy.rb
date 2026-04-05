@@ -22,7 +22,7 @@ class UserPolicy < ApplicationPolicy
   class Scope < ApplicationPolicy::Scope
     def resolve
       if user.admin?
-        scope.non_system
+        scope.all
       else
         scope.none
       end
