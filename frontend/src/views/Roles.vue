@@ -4,7 +4,11 @@
         <div v-if="!role">
             <AddRole @add-role="onAddRole" />
             <v-divider class="my-4"></v-divider>
-            <v-card v-for="role in roles" :key="role.id"  class="pa-3 mt-3" outlined>
+            <template v-if="loading">
+              <v-skeleton-loader v-for="n in 3" :key="n" type="list-item" class="mb-2" />
+            </template>
+            <template v-else>
+              <v-card v-for="role in roles" :key="role.id" class="pa-3 mt-3" outlined>
                 <v-row>
                     <v-col>
                         {{ role.name }} 
@@ -14,7 +18,8 @@
                         <v-btn variant="text" size="small" color="error" @click="deleteRole(role)">Delete</v-btn>
                     </v-col>
                 </v-row>
-            </v-card>
+              </v-card>
+            </template>
         </div>
         <div v-else>
         <h2>{{ role_name }}</h2>
@@ -52,6 +57,7 @@ import { trackEvent } from "../services/ahoy.js";
 
 const roles = ref('')
 const role = ref('')
+const loading = ref(false)
 const showSnackbar = inject('showSnackbar')
 
 onMounted(() => {
@@ -61,12 +67,15 @@ onMounted(() => {
 const role_name = computed(() => _.capitalize(role.value.name))
 
 const fetchRoles = async () => {
+    loading.value = true
     try {
         const response = await api.get('/roles')
         roles.value = response.data.roles
     } catch (error) {
         const e = error.response.data.error || ['An unknown error occurred']
         showSnackbar([e], 'error')
+    } finally {
+        loading.value = false
     }
 }
 

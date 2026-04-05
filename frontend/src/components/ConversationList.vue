@@ -41,8 +41,12 @@ function formatDate(dateStr) {
 
     <v-divider />
 
+    <template v-if="store.loading">
+      <v-skeleton-loader v-for="n in 4" :key="n" type="list-item-two-line" class="mx-2 mt-1" />
+    </template>
+
     <v-list
-      v-if="conversations.length"
+      v-else-if="conversations.length"
       density="compact"
       nav
       class="conversation-list__items"

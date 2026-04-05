@@ -20,6 +20,10 @@
                 </v-col>
             </v-row>
             <v-divider class="my-4"></v-divider>
+            <template v-if="loading">
+              <v-skeleton-loader v-for="n in 4" :key="n" type="list-item" class="mb-2" />
+            </template>
+            <template v-else>
             <v-card v-for="user in (filteredUsers || [])" :key="user.id"  class="pa-3 mt-3" outlined>
                 <v-row>
                     <v-col>
@@ -32,7 +36,8 @@
                     </v-col>
                 </v-row>
             </v-card>
-            <span v-if="!filteredUsers || !filteredUsers.length">
+            </template>
+            <span v-if="!loading && (!filteredUsers || !filteredUsers.length)">
                 None found.
             </span>
         </div>
@@ -90,6 +95,7 @@ export default {
     const searchEmail = ref('')
     const filteredUsers = ref([])
     const showActive = ref(true)
+    const loading = ref(false)
     const showSnackbar = inject('showSnackbar')
 
     const est = computed({
@@ -99,10 +105,15 @@ export default {
       });
 
     const fetchUsers = async() => {
+        loading.value = true
+        try {
         const response = await api.get('/users');
         users.value  = response.data.users
         filteredUsers.value = response.data.users
         filterUsers()
+        } finally {
+          loading.value = false
+        }
     }
 
     const fetchUser = async(u) => {
@@ -183,7 +194,7 @@ const deleteRole = async(r) => {
     onMounted(() => {
       fetchUsers()
     })
-    return {users, user, searchEmail, filteredUsers, fetchUser, filterUsers, deactivateUser, est, events, fetchEvents, showActive, reactivateUser, deleteRole};
+    return {users, user, searchEmail, filteredUsers, fetchUser, filterUsers, deactivateUser, est, events, fetchEvents, showActive, reactivateUser, deleteRole, loading};
   }
 }
 </script>
