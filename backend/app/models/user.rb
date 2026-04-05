@@ -29,6 +29,10 @@ class User < ApplicationRecord
     roles.exists?(name: 'admin')
   end
 
+  def staff?
+    roles.exists?(name: 'staff')
+  end
+
   def system?
     system_user?
   end

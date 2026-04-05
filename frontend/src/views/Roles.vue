@@ -42,7 +42,7 @@
     </v-container>
 </template>
 
-<script>
+<script setup>
 import { onMounted, ref, inject, computed } from 'vue'
 import api from '../services/api.js'
 import AddRole from '../components/AddRole.vue'
@@ -50,91 +50,71 @@ import AddUserRole from '../components/AddUserRole.vue'
 import _ from 'lodash'
 import { trackEvent } from "../services/ahoy.js";
 
-export default {
-    components: { AddRole, AddUserRole },
-    setup() {
-        const roles = ref('')
-        const role = ref('')
-        const showSnackbar = inject('showSnackbar')
+const roles = ref('')
+const role = ref('')
+const showSnackbar = inject('showSnackbar')
 
-        onMounted(() => {
-            fetchRoles()
-        })
+onMounted(() => {
+    fetchRoles()
+})
 
-    const role_name = computed({
-        get() {
-          return _.capitalize(role.value.name)
-        }
-      });
-        
-        const fetchRoles = async () => {
-            try {
-                const response = await api.get('/roles')
-                roles.value = response.data.roles
-            } catch (error) {
-                const e = error.response.data.error || ['An unknown error occurred']
-                showSnackbar([e], 'error')
-            }
-        }
+const role_name = computed(() => _.capitalize(role.value.name))
 
-        const onAddRole = async (roleName) => {
-            try {
-                const response = await api.post('/roles', { name: roleName })
-                trackEvent("created role", {role_id: response.data.role.id});
-                showSnackbar(['Role created'], 'success')
-                fetchRoles()
-            } catch (error) {
-                const errors = error.response.data.errors || ['An unknown error occurred']
-                showSnackbar(errors, 'error')
-            }
-        }
+const fetchRoles = async () => {
+    try {
+        const response = await api.get('/roles')
+        roles.value = response.data.roles
+    } catch (error) {
+        const e = error.response.data.error || ['An unknown error occurred']
+        showSnackbar([e], 'error')
+    }
+}
 
-        const fetchRole = async (r) => {
-            try {
-                const response = await api.get('/roles/' + r.id)
-                role.value = response.data.role
-            } catch (error) {
-                const e = error.response.data.error || ['An unknown error occurred']
-                showSnackbar([e], 'error')
-            }
-        }
+const onAddRole = async (roleName) => {
+    try {
+        const response = await api.post('/roles', { name: roleName })
+        trackEvent("created role", {role_id: response.data.role.id});
+        showSnackbar(['Role created'], 'success')
+        fetchRoles()
+    } catch (error) {
+        const errors = error.response.data.errors || ['An unknown error occurred']
+        showSnackbar(errors, 'error')
+    }
+}
 
-                const deleteRole = async (r) => {
-            try {
-                const response = await api.delete('/roles/' + r.id)
-                trackEvent("deleted role", {role_id: r.id});
-                fetchRoles()
-                showSnackbar(['Role deleted'], 'success')
-            } catch (error) {
-                const e = error.response.data.error || ['An unknown error occurred']
-                showSnackbar([e], 'error')
-            }
-        }
+const fetchRole = async (r) => {
+    try {
+        const response = await api.get('/roles/' + r.id)
+        role.value = response.data.role
+    } catch (error) {
+        const e = error.response.data.error || ['An unknown error occurred']
+        showSnackbar([e], 'error')
+    }
+}
 
-        const removeUserRole = async (userId) => {
-            try {
-                const userIds = role.value.users.map(item => item.id)
-                const filteredUserIds = userIds.filter(id => id !== parseInt(userId));
-                await api.patch('/roles/'+role.value.id, { role: {user_ids: filteredUserIds }});
-                trackEvent("removed user role", {user_id: userId, role_id: role.value.id});
-                fetchRole(role.value)
-                showSnackbar(['User role removed'], 'success')
-            } catch (error) {
-                const errors = error.response?.data?.errors || ['An unknown error occurred']
-                showSnackbar(errors, 'error')
-            }
-        };
+const deleteRole = async (r) => {
+    try {
+        await api.delete('/roles/' + r.id)
+        trackEvent("deleted role", {role_id: r.id});
+        fetchRoles()
+        showSnackbar(['Role deleted'], 'success')
+    } catch (error) {
+        const e = error.response.data.error || ['An unknown error occurred']
+        showSnackbar([e], 'error')
+    }
+}
 
-        return {
-            roles,
-            onAddRole,
-            showSnackbar,
-            fetchRole,
-            role,
-            role_name,
-            removeUserRole,
-            deleteRole
-        }
+const removeUserRole = async (userId) => {
+    try {
+        const userIds = role.value.users.map(item => item.id)
+        const filteredUserIds = userIds.filter(id => id !== parseInt(userId));
+        await api.patch('/roles/'+role.value.id, { role: {user_ids: filteredUserIds }});
+        trackEvent("removed user role", {user_id: userId, role_id: role.value.id});
+        fetchRole(role.value)
+        showSnackbar(['User role removed'], 'success')
+    } catch (error) {
+        const errors = error.response?.data?.errors || ['An unknown error occurred']
+        showSnackbar(errors, 'error')
     }
 }
 </script>
