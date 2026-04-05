@@ -52,7 +52,7 @@ provide('showSnackbar', showSnackbar)
         v-if="isLoggedIn"
         @click="sidebarStore.toggle()"
       />
-      <v-toolbar-title><a @click="goToDashboard">My App</a></v-toolbar-title>
+      <v-toolbar-title><a @click="goToDashboard">Influence</a></v-toolbar-title>
       <v-spacer></v-spacer>
       <v-btn v-if="isLoggedIn" @click="logout">Log out</v-btn>
       <v-btn text v-else-if="!isLoggedIn && route.name !== 'Login'" @click="goToLogin">Log In</v-btn>
