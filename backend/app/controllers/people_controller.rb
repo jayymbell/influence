@@ -1,6 +1,6 @@
 class PeopleController < ApplicationController
   before_action :authenticate_user!
-  before_action :set_person, only: %i[show update destroy invite revoke_invitation]
+  before_action :set_person, only: %i[show update destroy invite reactivate revoke_invitation]
 
   # GET /people
   def index
@@ -68,6 +68,14 @@ class PeopleController < ApplicationController
     @person.update!(deactivated_at: Time.current, deactivated_by: current_user)
     @person.discard
     render_success(message: 'Person deactivated.')
+  end
+
+  # POST /people/:id/reactivate
+  def reactivate
+    authorize @person
+    @person.undiscard
+    @person.update!(deactivated_at: nil, deactivated_by: nil, updated_by: current_user)
+    render_success(data: { person: person_data(@person) }, message: 'Person reactivated.')
   end
 
   # POST /people/:id/invite

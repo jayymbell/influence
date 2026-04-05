@@ -21,6 +21,7 @@ Rails.application.routes.draw do
   resources :people, only: [:index, :show, :create, :update, :destroy] do
     member do
       post   :invite
+      post   :reactivate
       delete :invitation, action: :revoke_invitation
     end
   end
