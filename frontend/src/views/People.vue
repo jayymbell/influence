@@ -47,12 +47,12 @@
           <v-col cols="auto">
             <v-btn variant="text" size="small" @click="openEditDialog(p)">Edit</v-btn>
             <v-btn
-              v-if="p.email && !p.user_id && !p.invitation_pending"
+              v-if="p.email && !p.user_id && !p.invitation_pending && !p.discarded_at"
               variant="text" size="small" color="primary"
               @click="invitePerson(p)"
             >Invite</v-btn>
             <v-btn
-              v-if="p.invitation_pending"
+              v-if="p.invitation_pending && !p.discarded_at"
               variant="text" size="small" color="warning"
               @click="revokeInvitation(p)"
             >Revoke Invite</v-btn>
@@ -71,7 +71,8 @@
           <PersonForm :form="form" />
         </v-card-text>
         <v-card-actions class="px-6 pb-5">
-          <v-btn v-if="editTarget" color="error" variant="text" @click="openDeleteDialog">Deactivate</v-btn>
+          <v-btn v-if="editTarget && editTarget.discarded_at" color="success" variant="text" @click="reactivatePerson">Reactivate</v-btn>
+          <v-btn v-if="editTarget && !editTarget.discarded_at" color="error" variant="text" @click="openDeleteDialog">Deactivate</v-btn>
           <v-spacer />
           <v-btn variant="text" @click="closeDialog">Cancel</v-btn>
           <v-btn color="primary" @click="editTarget ? updatePerson() : createPerson()">Save</v-btn>
@@ -229,6 +230,19 @@ const deletePerson = async () => {
   }
 }
 
+const reactivatePerson = async () => {
+  try {
+    await api.post('/people/' + editTarget.value.id + '/reactivate')
+    trackEvent('reactivated person', { person_id: editTarget.value.id })
+    showSnackbar(['Person reactivated'], 'success')
+    closeDialog()
+    fetchPeople(searchQuery.value)
+  } catch (error) {
+    const e = error.response?.data?.errors || ['An unknown error occurred']
+    showSnackbar(e, 'error')
+  }
+}
+
 const invitePerson = async (p) => {
   try {
     await api.post(`/people/${p.id}/invite`)
@@ -274,6 +288,7 @@ defineExpose({
   createPerson,
   updatePerson,
   deletePerson,
+  reactivatePerson,
   invitePerson,
   revokeInvitation
 })

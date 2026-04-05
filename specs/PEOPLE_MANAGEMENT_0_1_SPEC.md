@@ -16,18 +16,18 @@ Establish a People foundation that supports internal users and external contacts
 1. `Person` model and CRUD API.
 2. `Person <-> User` 0..1 to 1 mapping and linkage rules.
 3. Self-service account setup flow: regular users prompted to create their linked person on first login.
-4. Frontend People management view (list, create, edit, deactivate).
-5. Baseline backend and frontend tests (model, policy, request, store, component, router).
+4. Frontend People management view (list, create, edit, deactivate, reactivate).
+5. Invite-to-register flow: admin/staff can send an invitation email to a person with an email address who does not yet have a user account.
+6. Baseline backend and frontend tests (model, policy, request, store, component, router).
 
 ## 4. Out of Scope (for 0.1)
 1. Contact classification (`client`, `coalition`, `legislative`) — deferred to 1.x.
-2. Invite/claim-account workflow (creating a user from a person record) — deferred.
-3. Manual admin link/unlink of existing person-to-user — deferred.
-4. Full client assignment UX.
-5. Matter, billing, and reporting integration.
-6. Advanced dedupe/merge UI.
-7. Bulk import tooling.
-8. Notification preference center.
+2. Manual admin link/unlink of existing person-to-user — deferred.
+3. Full client assignment UX.
+4. Matter, billing, and reporting integration.
+5. Advanced dedupe/merge UI.
+6. Bulk import tooling.
+7. Notification preference center.
 
 ---
 
@@ -122,6 +122,19 @@ Establish a People foundation that supports internal users and external contacts
 5. DELETE /people/:id
 - Soft deactivate (sets `discarded_at`). Admin/staff only.
 
+6. POST /people/:id/reactivate
+- Undiscards the person, clears `deactivated_at`. Admin/staff only.
+- Returns the updated person.
+
+7. POST /people/:id/invite
+- Sends an invitation email to the person. Admin/staff only.
+- Person must have an email address and must not already have a linked user account.
+- Person must be active (not discarded).
+- Revokes any existing active invitation before generating a new one.
+
+8. DELETE /people/:id/invitation
+- Revokes the person's active invitation. Admin/staff only.
+
 ## 10. Response Shape
 1. Use standard `render_success` / `render_error` envelope.
 2. Return serialized person attributes (not raw model).
@@ -151,9 +164,15 @@ Establish a People foundation that supports internal users and external contacts
 1. People List (admin/staff):
 - Card list with search and active/inactive toggle.
 - Deactivate action with confirmation dialog.
-- Deactivated label shown inline on inactive people.
+- **Invite** button shown for active people with an email who do not yet have a user account and have no pending invitation.
+- **Revoke Invite** button shown for active people with a pending invitation.
+- Invite and Revoke Invite buttons are hidden for inactive (discarded) people.
 
-2. Account Setup (`/account-setup`):
+2. Edit Person dialog:
+- Shows **Deactivate** button for active people.
+- Shows **Reactivate** button (in place of Deactivate) for inactive (discarded) people; no confirmation dialog required.
+
+3. Account Setup (`/account-setup`):
 - Shown to regular users on first login if `hasPerson` is false.
 - Uses shared `PersonForm` component.
 - On success, calls `userStore.setPersonId()` and navigates to Dashboard.
@@ -191,8 +210,8 @@ Establish a People foundation that supports internal users and external contacts
 - Soft-delete and `active_for_authentication?` behavior.
 
 2. Policy tests:
-- Admin can index, show, create, update, destroy people.
-- Staff can index, show, create, update, destroy people.
+- Admin can index, show, create, update, destroy, reactivate, invite, and revoke_invitation on people.
+- Staff can index, show, create, update, destroy, reactivate, invite, and revoke_invitation on people.
 - Regular user denied index; can create own person (policy `create?` allows when `record.user == user`).
 - `PersonPolicy::Scope` returns all for admin/staff, none otherwise.
 
@@ -203,12 +222,20 @@ Establish a People foundation that supports internal users and external contacts
 - `GET /users` response includes `system_user` and `person_id` fields.
 - System users appear in the users list.
 - `POST /people` by a regular user auto-assigns email from current user.
+- `POST /people/:id/reactivate` undiscards person and clears `deactivated_at`; 403 for non-admin/staff.
+- `POST /people/:id/invite` sends invitation; 422 when no email, already has user, or person is inactive.
+- `DELETE /people/:id/invitation` revokes active invitation; 422 when no active invitation.
 
 ## 18. Frontend Tests
 1. `UserStore`: `hasPerson`, `isSystemUser`, `setPersonId`.
 2. `AccountSetup.vue`: renders form; POSTs to `/people`; calls `setPersonId`; navigates to Dashboard; shows snackbar on error.
 3. `AddUserRole.vue`: fetches users on mount; filters out existing/discarded; no-op guard; PATCHes; success snackbar + emit; error snackbar.
 4. Router global guard: all 6 exemption cases (admin, staff, system, has-person, unauthenticated, exempt-route).
+5. `People.vue`:
+- Invite button hidden for inactive (discarded) people.
+- Revoke Invite button hidden for inactive (discarded) people.
+- Reactivate button shown in edit dialog when person is discarded; Deactivate button shown when active.
+- `reactivatePerson` POSTs to `/people/:id/reactivate`, shows success snackbar, closes dialog.
 
 ## 19. Definition of Done (0.1)
 1. ✅ `Person` model, migration, and API endpoints implemented.

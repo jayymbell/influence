@@ -19,6 +19,10 @@ class PersonPolicy < ApplicationPolicy
     admin_or_staff?
   end
 
+  def reactivate?
+    admin_or_staff?
+  end
+
   def invite?
     admin_or_staff?
   end
