@@ -13,9 +13,10 @@ import Users from '../views/Users.vue'
 import Conversations from '../views/Conversations.vue'
 import People from '../views/People.vue'
 import AccountSetup from '../views/AccountSetup.vue'
+import InviteAccept from '../views/InviteAccept.vue'
 
 // Routes that are exempt from the account-setup redirect
-const SETUP_EXEMPT = ['Login', 'Signup', 'Confirmation', 'PasswordReset', 'PasswordEdit', 'AccountSetup']
+const SETUP_EXEMPT = ['Login', 'Signup', 'Confirmation', 'PasswordReset', 'PasswordEdit', 'AccountSetup', 'InviteAccept']
 
 const routes = [
   {
@@ -146,6 +147,16 @@ const routes = [
       if (!userStore.isLoggedIn) return next({ name: 'Login' })
       // Redirect away if they already have a person
       if (userStore.hasPerson) return next({ name: 'Dashboard' })
+      next()
+    }
+  },
+  {
+    path: '/invite/accept',
+    name: 'InviteAccept',
+    component: InviteAccept,
+    beforeEnter: (to, from, next) => {
+      const userStore = useUserStore()
+      if (userStore.isLoggedIn) return next({ name: 'Dashboard' })
       next()
     }
   }

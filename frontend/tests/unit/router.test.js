@@ -25,6 +25,7 @@ jest.mock('../../src/views/Users.vue', () => ({ name: 'Users' }))
 jest.mock('../../src/views/People.vue', () => ({ name: 'People' }))
 jest.mock('../../src/views/AccountSetup.vue', () => ({ name: 'AccountSetup' }))
 jest.mock('../../src/views/Conversations.vue', () => ({ name: 'Conversations' }))
+jest.mock('../../src/views/InviteAccept.vue', () => ({ name: 'InviteAccept' }))
 
 import router from '../../src/router/index.js'
 
@@ -45,6 +46,7 @@ describe('Router Configuration', () => {
     expect(routeNames).toContain('PasswordReset')
     expect(routeNames).toContain('PasswordEdit')
     expect(routeNames).toContain('Confirmation')
+    expect(routeNames).toContain('InviteAccept')
   })
 
   test('login route exists with correct path', () => {
@@ -295,6 +297,38 @@ describe('Public Routes', () => {
   test('password edit route has no guards', () => {
     const editRoute = router.getRoutes().find(r => r.name === 'PasswordEdit')
     expect(editRoute.beforeEnter).toBeUndefined()
+  })
+
+  test('InviteAccept route exists at /invite/accept', () => {
+    const route = router.getRoutes().find(r => r.name === 'InviteAccept')
+    expect(route).toBeDefined()
+    expect(route.path).toBe('/invite/accept')
+  })
+
+  test('InviteAccept guard redirects logged-in users to dashboard', (done) => {
+    const store = useUserStore()
+    store.bearerToken = 'token'
+    store.user = { id: 1 }
+
+    const mockNext = jest.fn()
+    const inviteAcceptRoute = router.getRoutes().find(r => r.name === 'InviteAccept')
+    inviteAcceptRoute.beforeEnter({}, {}, mockNext)
+
+    expect(mockNext).toHaveBeenCalledWith({ name: 'Dashboard' })
+    done()
+  })
+
+  test('InviteAccept guard allows unauthenticated users', (done) => {
+    const store = useUserStore()
+    store.bearerToken = null
+    store.user = null
+
+    const mockNext = jest.fn()
+    const inviteAcceptRoute = router.getRoutes().find(r => r.name === 'InviteAccept')
+    inviteAcceptRoute.beforeEnter({}, {}, mockNext)
+
+    expect(mockNext).toHaveBeenCalledWith()
+    done()
   })
 })
 

@@ -227,4 +227,85 @@ RSpec.describe 'People API', type: :request do
       expect(response).to have_http_status(:forbidden)
     end
   end
+
+  describe 'POST /people/:id/invite' do
+    let(:admin)  { create(:user, :admin) }
+    let(:person) { create(:person, :with_email) }
+
+    it 'sends an invitation and returns 200' do
+      post "/people/#{person.id}/invite", headers: auth_headers_for(admin)
+
+      expect(response).to have_http_status(:ok)
+      expect(json_response['message']).to match(/invitation sent/i)
+      expect(person.invitations.active.count).to eq(1)
+    end
+
+    it 'enqueues the invitation email' do
+      expect {
+        post "/people/#{person.id}/invite", headers: auth_headers_for(admin)
+      }.to have_enqueued_mail(InvitationsMailer, :invite)
+    end
+
+    it 'returns 422 when person has no email' do
+      person_no_email = create(:person, email: nil)
+      post "/people/#{person_no_email.id}/invite", headers: auth_headers_for(admin)
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(json_response['errors'].first).to match(/no email/i)
+    end
+
+    it 'returns 422 when person already has a user account' do
+      existing_user = create(:user)
+      person_with_user = create(:person, user: existing_user, email: existing_user.email)
+      post "/people/#{person_with_user.id}/invite", headers: auth_headers_for(admin)
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(json_response['errors'].first).to match(/already has a user/i)
+    end
+
+    it 'revokes the old invitation when re-inviting' do
+      post "/people/#{person.id}/invite", headers: auth_headers_for(admin)
+      first_inv = person.invitations.active.first
+
+      post "/people/#{person.id}/invite", headers: auth_headers_for(admin)
+
+      expect(first_inv.reload.revoked_at).not_to be_nil
+      expect(person.invitations.active.count).to eq(1)
+    end
+
+    it 'returns 403 for regular users' do
+      user = create(:user)
+      post "/people/#{person.id}/invite", headers: auth_headers_for(user)
+      expect(response).to have_http_status(:forbidden)
+    end
+  end
+
+  describe 'DELETE /people/:id/invitation' do
+    let(:admin)  { create(:user, :admin) }
+    let(:person) { create(:person, :with_email) }
+
+    it 'revokes the active invitation' do
+      Invitation.generate_for(person, invited_by: admin)
+      expect(person.invitations.active.count).to eq(1)
+
+      delete "/people/#{person.id}/invitation", headers: auth_headers_for(admin)
+
+      expect(response).to have_http_status(:ok)
+      expect(json_response['message']).to match(/revoked/i)
+      expect(person.invitations.active.count).to eq(0)
+    end
+
+    it 'returns 422 when there is no active invitation' do
+      delete "/people/#{person.id}/invitation", headers: auth_headers_for(admin)
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(json_response['errors'].first).to match(/no active invitation/i)
+    end
+
+    it 'returns 403 for regular users' do
+      user = create(:user)
+      delete "/people/#{person.id}/invitation", headers: auth_headers_for(user)
+      expect(response).to have_http_status(:forbidden)
+    end
+  end
 end

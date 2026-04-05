@@ -24,8 +24,9 @@ const api = require('../../src/services/api')
 const { trackEvent } = require('../../src/services/ahoy.js')
 
 const mockPeople = [
-  { id: 1, display_name: 'Alice Smith', first_name: 'Alice', last_name: 'Smith', email: 'alice@example.com', title: 'Director', organization_name: 'Acme', phone: '', notes: '', discarded_at: null, user: null, created_by: null, updated_by: null },
-  { id: 2, display_name: 'Bob Jones', first_name: 'Bob', last_name: 'Jones', email: '', title: '', organization_name: '', phone: '', notes: '', discarded_at: null, user: null, created_by: null, updated_by: null }
+  { id: 1, display_name: 'Alice Smith', first_name: 'Alice', last_name: 'Smith', email: 'alice@example.com', title: 'Director', organization_name: 'Acme', phone: '', notes: '', discarded_at: null, user: null, created_by: null, updated_by: null, user_id: null, invitation_pending: false },
+  { id: 2, display_name: 'Bob Jones', first_name: 'Bob', last_name: 'Jones', email: '', title: '', organization_name: '', phone: '', notes: '', discarded_at: null, user: null, created_by: null, updated_by: null, user_id: null, invitation_pending: false },
+  { id: 3, display_name: 'Carol White', first_name: 'Carol', last_name: 'White', email: 'carol@example.com', title: '', organization_name: '', phone: '', notes: '', discarded_at: null, user: null, created_by: null, updated_by: null, user_id: null, invitation_pending: true }
 ]
 
 const mountComponent = async () => {
@@ -257,6 +258,72 @@ describe('People.vue', () => {
       await wrapper.vm.deletePerson()
 
       expect(showSnackbar).toHaveBeenCalledWith(['Cannot delete'], 'error')
+    })
+  })
+
+  describe('invite and revoke invitation', () => {
+    it('shows Invite button when person has email, no user, and no pending invitation', async () => {
+      const { wrapper } = await mountComponent()
+      await nextTick()
+      await nextTick()
+      expect(wrapper.text()).toContain('Invite')
+    })
+
+    it('shows Revoke Invite button when invitation is pending', async () => {
+      const { wrapper } = await mountComponent()
+      await nextTick()
+      await nextTick()
+      expect(wrapper.text()).toContain('Revoke Invite')
+    })
+
+    it('invitePerson posts to /people/:id/invite and shows success', async () => {
+      api.post.mockResolvedValue({ data: { message: 'Invitation sent' } })
+      api.get
+        .mockResolvedValueOnce({ data: { people: mockPeople } })
+        .mockResolvedValueOnce({ data: { people: mockPeople } })
+      const { wrapper, showSnackbar } = await mountComponent()
+      await nextTick()
+
+      await wrapper.vm.invitePerson(mockPeople[0])
+
+      expect(api.post).toHaveBeenCalledWith('/people/1/invite')
+      expect(trackEvent).toHaveBeenCalledWith('invited person', { person_id: 1 })
+      expect(showSnackbar).toHaveBeenCalledWith(['Invitation sent'], 'success')
+    })
+
+    it('invitePerson shows error snackbar on failure', async () => {
+      api.post.mockRejectedValue({ response: { data: { errors: ['Person already has a user account'] } } })
+      const { wrapper, showSnackbar } = await mountComponent()
+      await nextTick()
+
+      await wrapper.vm.invitePerson(mockPeople[0])
+
+      expect(showSnackbar).toHaveBeenCalledWith(['Person already has a user account'], 'error')
+    })
+
+    it('revokeInvitation deletes /people/:id/invitation and shows success', async () => {
+      api.delete.mockResolvedValue({ data: { message: 'Invitation revoked' } })
+      api.get
+        .mockResolvedValueOnce({ data: { people: mockPeople } })
+        .mockResolvedValueOnce({ data: { people: mockPeople } })
+      const { wrapper, showSnackbar } = await mountComponent()
+      await nextTick()
+
+      await wrapper.vm.revokeInvitation(mockPeople[2])
+
+      expect(api.delete).toHaveBeenCalledWith('/people/3/invitation')
+      expect(trackEvent).toHaveBeenCalledWith('revoked invitation', { person_id: 3 })
+      expect(showSnackbar).toHaveBeenCalledWith(['Invitation revoked'], 'success')
+    })
+
+    it('revokeInvitation shows error snackbar on failure', async () => {
+      api.delete.mockRejectedValue({ response: { data: { errors: ['No active invitation'] } } })
+      const { wrapper, showSnackbar } = await mountComponent()
+      await nextTick()
+
+      await wrapper.vm.revokeInvitation(mockPeople[2])
+
+      expect(showSnackbar).toHaveBeenCalledWith(['No active invitation'], 'error')
     })
   })
 

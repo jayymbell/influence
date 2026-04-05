@@ -19,6 +19,14 @@ class PersonPolicy < ApplicationPolicy
     admin_or_staff?
   end
 
+  def invite?
+    admin_or_staff?
+  end
+
+  def revoke_invitation?
+    admin_or_staff?
+  end
+
   class Scope < ApplicationPolicy::Scope
     def resolve
       if user.admin? || user.staff?

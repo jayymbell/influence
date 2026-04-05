@@ -1,0 +1,9 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <p>Hi <%= @person_name %>,</p>
+    <p>You've been invited to create an account. Set your password using the link below — it expires on <%= @expires_at %>.</p>
+    <p><a href="<%= @accept_url %>">Accept Invitation</a></p>
+    <p>If you did not expect this invitation, you can safely ignore this email.</p>
+  </body>
+</html>
