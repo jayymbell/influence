@@ -22,8 +22,8 @@
         <AddUserRole :role="role" @user-roles-updated="fetchRole(role)"/>
         <v-divider class="my-4"></v-divider>
         <v-card v-for="user in role.users" :key="user.id" class="pa-3 mt-3" outlined>
-        <v-row>
-            <v-col cols="8">
+        <v-row align="center">
+            <v-col>
                 {{ user.email }}
             <v-chip
                 v-if="user.discarded_at"
