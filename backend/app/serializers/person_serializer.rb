@@ -32,4 +32,14 @@ class PersonSerializer
   attribute :deactivated_by do |person|
     person.deactivated_by ? { id: person.deactivated_by.id, email: person.deactivated_by.email } : nil
   end
+
+  attribute :user_id do |person|
+    person.user_id
+  end
+
+  attribute :invitation_pending do |person|
+    person.association(:active_invitation).loaded? ?
+      person.active_invitation.present? :
+      person.invitations.active.exists?
+  end
 end

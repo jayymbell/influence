@@ -46,6 +46,16 @@
           </v-col>
           <v-col cols="auto">
             <v-btn variant="text" size="small" @click="openEditDialog(p)">Edit</v-btn>
+            <v-btn
+              v-if="p.email && !p.user_id && !p.invitation_pending"
+              variant="text" size="small" color="primary"
+              @click="invitePerson(p)"
+            >Invite</v-btn>
+            <v-btn
+              v-if="p.invitation_pending"
+              variant="text" size="small" color="warning"
+              @click="revokeInvitation(p)"
+            >Revoke Invite</v-btn>
           </v-col>
         </v-row>
       </v-card>
@@ -219,6 +229,30 @@ const deletePerson = async () => {
   }
 }
 
+const invitePerson = async (p) => {
+  try {
+    await api.post(`/people/${p.id}/invite`)
+    trackEvent('invited person', { person_id: p.id })
+    showSnackbar(['Invitation sent'], 'success')
+    fetchPeople(searchQuery.value)
+  } catch (error) {
+    const e = error.response?.data?.errors || ['An unknown error occurred']
+    showSnackbar(e, 'error')
+  }
+}
+
+const revokeInvitation = async (p) => {
+  try {
+    await api.delete(`/people/${p.id}/invitation`)
+    trackEvent('revoked invitation', { person_id: p.id })
+    showSnackbar(['Invitation revoked'], 'success')
+    fetchPeople(searchQuery.value)
+  } catch (error) {
+    const e = error.response?.data?.errors || ['An unknown error occurred']
+    showSnackbar(e, 'error')
+  }
+}
+
 onMounted(() => fetchPeople())
 
 defineExpose({
@@ -239,6 +273,8 @@ defineExpose({
   openDeleteDialog,
   createPerson,
   updatePerson,
-  deletePerson
+  deletePerson,
+  invitePerson,
+  revokeInvitation
 })
 </script>

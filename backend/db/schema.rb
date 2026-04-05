@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_04_04_230348) do
+ActiveRecord::Schema[8.0].define(version: 2026_04_05_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -63,6 +63,21 @@ ActiveRecord::Schema[8.0].define(version: 2026_04_04_230348) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["user_id"], name: "index_conversations_on_user_id"
+  end
+
+  create_table "invitations", force: :cascade do |t|
+    t.bigint "person_id", null: false
+    t.bigint "created_by_id"
+    t.string "token_digest", null: false
+    t.string "email_snapshot", null: false
+    t.datetime "expires_at", null: false
+    t.datetime "accepted_at"
+    t.datetime "revoked_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_by_id"], name: "index_invitations_on_created_by_id"
+    t.index ["person_id"], name: "index_invitations_on_person_id"
+    t.index ["token_digest"], name: "index_invitations_on_token_digest", unique: true
   end
 
   create_table "messages", force: :cascade do |t|
@@ -153,6 +168,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_04_04_230348) do
   end
 
   add_foreign_key "conversations", "users"
+  add_foreign_key "invitations", "people"
+  add_foreign_key "invitations", "users", column: "created_by_id"
   add_foreign_key "messages", "conversations"
   add_foreign_key "people", "users"
   add_foreign_key "people", "users", column: "created_by_id"

@@ -2,6 +2,9 @@ class Person < ApplicationRecord
   include Discard::Model
 
   belongs_to :user, optional: true
+  has_many :invitations, dependent: :destroy
+  has_one :active_invitation, -> { active }, class_name: 'Invitation'
+
   belongs_to :created_by,     class_name: 'User', optional: true
   belongs_to :updated_by,     class_name: 'User', optional: true
   belongs_to :deactivated_by, class_name: 'User', optional: true

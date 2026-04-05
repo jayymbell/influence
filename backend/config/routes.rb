@@ -18,7 +18,14 @@ Rails.application.routes.draw do
 
   resources :roles
   resources :users, only: [:index, :show, :destroy, :update]
-  resources :people, only: [:index, :show, :create, :update, :destroy]
+  resources :people, only: [:index, :show, :create, :update, :destroy] do
+    member do
+      post   :invite
+      delete :invitation, action: :revoke_invitation
+    end
+  end
+
+  post 'invitations/accept', to: 'invitations#accept'
 
   resources :conversations, only: [:index, :show, :create, :update, :destroy] do
     post :messages, to: "conversations#send_message", on: :member

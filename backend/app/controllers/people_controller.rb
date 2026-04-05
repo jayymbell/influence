@@ -1,6 +1,6 @@
 class PeopleController < ApplicationController
   before_action :authenticate_user!
-  before_action :set_person, only: %i[show update destroy]
+  before_action :set_person, only: %i[show update destroy invite revoke_invitation]
 
   # GET /people
   def index
@@ -19,7 +19,7 @@ class PeopleController < ApplicationController
     per_page = (params[:per_page] || 25).to_i
     @people  = @people.order(updated_at: :desc).offset((page - 1) * per_page).limit(per_page)
 
-    serialized = @people.map { |p| PersonSerializer.new(p).serializable_hash[:data][:attributes] }
+    serialized = @people.includes(:active_invitation).map { |p| PersonSerializer.new(p).serializable_hash[:data][:attributes] }
     render_success(data: { people: serialized }, message: 'People found.')
   end
 
@@ -68,6 +68,35 @@ class PeopleController < ApplicationController
     @person.update!(deactivated_at: Time.current, deactivated_by: current_user)
     @person.discard
     render_success(message: 'Person deactivated.')
+  end
+
+  # POST /people/:id/invite
+  def invite
+    authorize @person, :invite?
+
+    unless @person.email.present?
+      return render_error(errors: ['Person has no email address'], message: 'Cannot send invitation.')
+    end
+
+    if @person.user_id.present?
+      return render_error(errors: ['Person already has a user account'], message: 'Cannot send invitation.')
+    end
+
+    raw_token = Invitation.generate_for(@person, invited_by: current_user)
+    InvitationsMailer.invite(@person.active_invitation, raw_token).deliver_later
+    render_success(message: 'Invitation sent.')
+  end
+
+  # DELETE /people/:id/invitation
+  def revoke_invitation
+    authorize @person, :revoke_invitation?
+
+    if @person.active_invitation
+      @person.active_invitation.revoke!
+      render_success(message: 'Invitation revoked.')
+    else
+      render_error(errors: ['No active invitation found'], message: 'Nothing to revoke.')
+    end
   end
 
   private
