@@ -12,6 +12,24 @@ RSpec.describe 'Users API', type: :request do
       expect(body['message']).to match(/Users found|Success/i)
     end
 
+    it 'includes system_user and person_id fields in the response' do
+      admin = create(:user, :admin)
+      get '/users', headers: auth_headers_for(admin)
+
+      user_data = json_response['users'].first
+      expect(user_data).to have_key('system_user')
+      expect(user_data).to have_key('person_id')
+    end
+
+    it 'includes system users in the list' do
+      admin = create(:user, :admin)
+      system = create(:user, :system_user)
+      get '/users', headers: auth_headers_for(admin)
+
+      ids = json_response['users'].map { |u| u['id'] }
+      expect(ids).to include(system.id)
+    end
+
     it 'returns 401 when unauthenticated' do
       get '/users', headers: json_headers
       expect(response).to have_http_status(:unauthorized)

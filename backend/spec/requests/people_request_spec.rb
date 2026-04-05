@@ -144,6 +144,13 @@ RSpec.describe 'People API', type: :request do
 
       expect(Person.last.user_id).to eq(user.id)
     end
+
+    it 'automatically sets email from current user for regular users' do
+      user = create(:user)
+      post '/people', params: valid_params, headers: auth_headers_for(user)
+
+      expect(Person.last.email).to eq(user.email)
+    end
   end
 
   describe 'PATCH /people/:id' do
