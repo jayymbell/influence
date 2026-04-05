@@ -47,12 +47,12 @@
           <v-col cols="auto">
             <v-btn variant="text" size="small" @click="openEditDialog(p)">Edit</v-btn>
             <v-btn
-              v-if="p.email && !p.user_id && !p.invitation_pending"
+              v-if="p.email && !p.user_id && !p.invitation_pending && !p.discarded_at"
               variant="text" size="small" color="primary"
               @click="invitePerson(p)"
             >Invite</v-btn>
             <v-btn
-              v-if="p.invitation_pending"
+              v-if="p.invitation_pending && !p.discarded_at"
               variant="text" size="small" color="warning"
               @click="revokeInvitation(p)"
             >Revoke Invite</v-btn>
