@@ -243,7 +243,7 @@ describe('People.vue', () => {
 
       expect(api.delete).toHaveBeenCalledWith('/people/1')
       expect(trackEvent).toHaveBeenCalledWith('deleted person', { person_id: 1 })
-      expect(showSnackbar).toHaveBeenCalledWith(['Person deleted'], 'success')
+      expect(showSnackbar).toHaveBeenCalledWith(['Person deactivated'], 'success')
       expect(wrapper.vm.deleteDialogOpen).toBe(false)
       expect(wrapper.vm.dialogOpen).toBe(false)
     })
