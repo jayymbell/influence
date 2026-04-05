@@ -9,9 +9,9 @@
                     <v-col>
                         {{ role.name }} 
                     </v-col>
-                    <v-col class="text-right">
-                        <a style="margin-right: 5px;" @click="fetchRole(role)">Open</a> | 
-                        <a style="margin-right: 5px; margin-left: 5px;" @click="deleteRole(role)">Delete</a>
+                    <v-col cols="auto">
+                        <v-btn variant="text" size="small" @click="fetchRole(role)">Open</v-btn>
+                        <v-btn variant="text" size="small" color="error" @click="deleteRole(role)">Delete</v-btn>
                     </v-col>
                 </v-row>
             </v-card>
@@ -31,13 +31,13 @@
                 style="float: right;"
             >Inactive</v-chip>
             </v-col>
-            <v-col class="text-right">
-                <a @click="removeUserRole(user.id)">Delete</a>
+            <v-col cols="auto">
+                <v-btn variant="text" size="small" color="error" @click="removeUserRole(user.id)">Remove</v-btn>
             </v-col>
         </v-row>
         </v-card>
         <br/>
-        <a v-if="role" style="width: 100%; margin-top: 10px;" @click="role = ''">Close</a>
+        <v-btn variant="text" size="small" class="mt-2" @click="role = ''">Close</v-btn>
         </div>
     </v-container>
 </template>
