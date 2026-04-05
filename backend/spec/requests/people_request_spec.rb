@@ -228,6 +228,44 @@ RSpec.describe 'People API', type: :request do
     end
   end
 
+  describe 'POST /people/:id/reactivate' do
+    let(:admin) { create(:user, :admin) }
+
+    it 'reactivates a discarded person' do
+      person = create(:person, :discarded)
+      expect(person.discarded?).to be true
+
+      post "/people/#{person.id}/reactivate", headers: auth_headers_for(admin)
+
+      expect(response).to have_http_status(:ok)
+      expect(json_response['message']).to match(/reactivated/i)
+      expect(person.reload.discarded?).to be false
+      expect(person.reload.deactivated_at).to be_nil
+    end
+
+    it 'returns the updated person in the response' do
+      person = create(:person, :discarded)
+      post "/people/#{person.id}/reactivate", headers: auth_headers_for(admin)
+
+      expect(json_response['person']['discarded_at']).to be_nil
+    end
+
+    it 'returns 403 for unauthorized users' do
+      user   = create(:user)
+      person = create(:person, :discarded)
+      post "/people/#{person.id}/reactivate", headers: auth_headers_for(user)
+
+      expect(response).to have_http_status(:forbidden)
+    end
+
+    it 'returns 401 for unauthenticated requests' do
+      person = create(:person, :discarded)
+      post "/people/#{person.id}/reactivate"
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
   describe 'POST /people/:id/invite' do
     let(:admin)  { create(:user, :admin) }
     let(:person) { create(:person, :with_email) }

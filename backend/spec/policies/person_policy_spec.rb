@@ -28,6 +28,10 @@ RSpec.describe PersonPolicy do
       expect(subject.new(user, person).destroy?).to be true
     end
 
+    it 'allows reactivate' do
+      expect(subject.new(user, person).reactivate?).to be true
+    end
+
     describe 'Scope' do
       it 'returns all people including discarded' do
         create_list(:person, 3)
@@ -61,6 +65,10 @@ RSpec.describe PersonPolicy do
       expect(subject.new(user, person).destroy?).to be true
     end
 
+    it 'allows reactivate' do
+      expect(subject.new(user, person).reactivate?).to be true
+    end
+
     describe 'Scope' do
       it 'returns all people including discarded' do
         create_list(:person, 2)
@@ -92,6 +100,10 @@ RSpec.describe PersonPolicy do
 
     it 'denies destroy' do
       expect(subject.new(user, person).destroy?).to be false
+    end
+
+    it 'denies reactivate' do
+      expect(subject.new(user, person).reactivate?).to be false
     end
 
     describe 'Scope' do

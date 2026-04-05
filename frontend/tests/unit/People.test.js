@@ -26,7 +26,8 @@ const { trackEvent } = require('../../src/services/ahoy.js')
 const mockPeople = [
   { id: 1, display_name: 'Alice Smith', first_name: 'Alice', last_name: 'Smith', email: 'alice@example.com', title: 'Director', organization_name: 'Acme', phone: '', notes: '', discarded_at: null, user: null, created_by: null, updated_by: null, user_id: null, invitation_pending: false },
   { id: 2, display_name: 'Bob Jones', first_name: 'Bob', last_name: 'Jones', email: '', title: '', organization_name: '', phone: '', notes: '', discarded_at: null, user: null, created_by: null, updated_by: null, user_id: null, invitation_pending: false },
-  { id: 3, display_name: 'Carol White', first_name: 'Carol', last_name: 'White', email: 'carol@example.com', title: '', organization_name: '', phone: '', notes: '', discarded_at: null, user: null, created_by: null, updated_by: null, user_id: null, invitation_pending: true }
+  { id: 3, display_name: 'Carol White', first_name: 'Carol', last_name: 'White', email: 'carol@example.com', title: '', organization_name: '', phone: '', notes: '', discarded_at: null, user: null, created_by: null, updated_by: null, user_id: null, invitation_pending: true },
+  { id: 4, display_name: 'Dave Inactive', first_name: 'Dave', last_name: 'Inactive', email: 'dave@example.com', title: '', organization_name: '', phone: '', notes: '', discarded_at: '2026-01-01T00:00:00.000Z', user: null, created_by: null, updated_by: null, user_id: null, invitation_pending: false }
 ]
 
 const mountComponent = async () => {
@@ -269,11 +270,31 @@ describe('People.vue', () => {
       expect(wrapper.text()).toContain('Invite')
     })
 
+    it('does not show Invite button for inactive (discarded) person', async () => {
+      api.get.mockResolvedValue({ data: { people: [
+        { ...mockPeople[3] } // Dave is discarded with email
+      ] } })
+      const { wrapper } = await mountComponent()
+      await nextTick()
+      await nextTick()
+      expect(wrapper.text()).not.toContain('Invite')
+    })
+
     it('shows Revoke Invite button when invitation is pending', async () => {
       const { wrapper } = await mountComponent()
       await nextTick()
       await nextTick()
       expect(wrapper.text()).toContain('Revoke Invite')
+    })
+
+    it('does not show Revoke Invite button for inactive (discarded) person with pending invitation', async () => {
+      api.get.mockResolvedValue({ data: { people: [
+        { ...mockPeople[3], invitation_pending: true }
+      ] } })
+      const { wrapper } = await mountComponent()
+      await nextTick()
+      await nextTick()
+      expect(wrapper.text()).not.toContain('Revoke Invite')
     })
 
     it('invitePerson posts to /people/:id/invite and shows success', async () => {
@@ -324,6 +345,68 @@ describe('People.vue', () => {
       await wrapper.vm.revokeInvitation(mockPeople[2])
 
       expect(showSnackbar).toHaveBeenCalledWith(['No active invitation'], 'error')
+    })
+  })
+
+  describe('reactivate', () => {
+    const discardedPerson = { id: 4, display_name: 'Dave Inactive', first_name: 'Dave', last_name: 'Inactive', email: 'dave@example.com', title: '', organization_name: '', phone: '', notes: '', discarded_at: '2026-01-01T00:00:00.000Z', user: null, created_by: null, updated_by: null, user_id: null, invitation_pending: false }
+
+    it('shows Reactivate button when editing a discarded person', async () => {
+      api.get
+        .mockResolvedValueOnce({ data: { people: mockPeople } })
+        .mockResolvedValueOnce({ data: { person: discardedPerson } })
+
+      const { wrapper } = await mountComponent()
+      await nextTick()
+      await wrapper.vm.openEditDialog(discardedPerson)
+      await nextTick()
+
+      expect(wrapper.text()).toContain('Reactivate')
+      expect(wrapper.text()).not.toContain('Deactivate')
+    })
+
+    it('shows Deactivate button when editing an active person', async () => {
+      api.get
+        .mockResolvedValueOnce({ data: { people: mockPeople } })
+        .mockResolvedValueOnce({ data: { person: mockPeople[0] } })
+
+      const { wrapper } = await mountComponent()
+      await nextTick()
+      await wrapper.vm.openEditDialog(mockPeople[0])
+      await nextTick()
+
+      expect(wrapper.text()).toContain('Deactivate')
+      expect(wrapper.text()).not.toContain('Reactivate')
+    })
+
+    it('posts to /people/:id/reactivate and shows success', async () => {
+      const reactivatedPerson = { ...discardedPerson, discarded_at: null }
+      api.post.mockResolvedValue({ data: { person: reactivatedPerson, message: 'Person reactivated.' } })
+      api.get
+        .mockResolvedValueOnce({ data: { people: mockPeople } })
+        .mockResolvedValueOnce({ data: { people: mockPeople } })
+
+      const { wrapper, showSnackbar } = await mountComponent()
+      await nextTick()
+
+      wrapper.vm.editTarget = discardedPerson
+      await wrapper.vm.reactivatePerson()
+
+      expect(api.post).toHaveBeenCalledWith('/people/4/reactivate')
+      expect(trackEvent).toHaveBeenCalledWith('reactivated person', { person_id: 4 })
+      expect(showSnackbar).toHaveBeenCalledWith(['Person reactivated'], 'success')
+      expect(wrapper.vm.dialogOpen).toBe(false)
+    })
+
+    it('shows error snackbar on reactivate failure', async () => {
+      api.post.mockRejectedValue({ response: { data: { errors: ['Not authorized'] } } })
+      const { wrapper, showSnackbar } = await mountComponent()
+      await nextTick()
+
+      wrapper.vm.editTarget = discardedPerson
+      await wrapper.vm.reactivatePerson()
+
+      expect(showSnackbar).toHaveBeenCalledWith(['Not authorized'], 'error')
     })
   })
 
