@@ -21,7 +21,7 @@ class PersonPolicy < ApplicationPolicy
 
   class Scope < ApplicationPolicy::Scope
     def resolve
-      if user.admin? || user.roles.exists?(name: 'staff')
+      if user.admin? || user.staff?
         scope.all
       else
         scope.none
@@ -32,7 +32,7 @@ class PersonPolicy < ApplicationPolicy
   private
 
   def admin_or_staff?
-    user.admin? || user.roles.exists?(name: 'staff')
+    user.admin? || user.staff?
   end
 
   def own_person?
