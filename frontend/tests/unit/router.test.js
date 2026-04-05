@@ -22,6 +22,9 @@ jest.mock('../../src/views/PasswordReset.vue', () => ({ name: 'PasswordReset' })
 jest.mock('../../src/views/Account.vue', () => ({ name: 'Account' }))
 jest.mock('../../src/views/Roles.vue', () => ({ name: 'Roles' }))
 jest.mock('../../src/views/Users.vue', () => ({ name: 'Users' }))
+jest.mock('../../src/views/People.vue', () => ({ name: 'People' }))
+jest.mock('../../src/views/AccountSetup.vue', () => ({ name: 'AccountSetup' }))
+jest.mock('../../src/views/Conversations.vue', () => ({ name: 'Conversations' }))
 
 import router from '../../src/router/index.js'
 
@@ -292,5 +295,94 @@ describe('Public Routes', () => {
   test('password edit route has no guards', () => {
     const editRoute = router.getRoutes().find(r => r.name === 'PasswordEdit')
     expect(editRoute.beforeEnter).toBeUndefined()
+  })
+})
+
+describe('Global beforeEach — AccountSetup redirect', () => {
+  // Reset router to a known position before each test so guards always fire
+  beforeEach(async () => {
+    await router.push('/login')
+    await router.isReady()
+  })
+
+  test('AccountSetup route exists', () => {
+    const route = router.getRoutes().find(r => r.name === 'AccountSetup')
+    expect(route).toBeDefined()
+    expect(route.path).toBe('/account-setup')
+  })
+
+  test('redirects regular user with no person to AccountSetup', async () => {
+    const store = useUserStore()
+    store.bearerToken = 'token'
+    store.user = { id: 1, roles: [], system_user: false }
+
+    await router.push('/')
+    await router.isReady()
+
+    expect(router.currentRoute.value.name).toBe('AccountSetup')
+  })
+
+  test('allows admin user with no person through', async () => {
+    const store = useUserStore()
+    store.bearerToken = 'token'
+    store.user = { id: 1, roles: [{ name: 'admin' }], system_user: false }
+
+    await router.push('/')
+    await router.isReady()
+
+    expect(router.currentRoute.value.name).toBe('Dashboard')
+  })
+
+  test('allows staff user with no person through', async () => {
+    const store = useUserStore()
+    store.bearerToken = 'token'
+    store.user = { id: 1, roles: [{ name: 'staff' }], system_user: false }
+
+    await router.push('/')
+    await router.isReady()
+
+    expect(router.currentRoute.value.name).toBe('Dashboard')
+  })
+
+  test('allows system user with no person through', async () => {
+    const store = useUserStore()
+    store.bearerToken = 'token'
+    store.user = { id: 1, roles: [], system_user: true }
+
+    await router.push('/')
+    await router.isReady()
+
+    expect(router.currentRoute.value.name).toBe('Dashboard')
+  })
+
+  test('allows regular user with a person through', async () => {
+    const store = useUserStore()
+    store.bearerToken = 'token'
+    store.user = { id: 1, roles: [], system_user: false, person_id: 5 }
+
+    await router.push('/')
+    await router.isReady()
+
+    expect(router.currentRoute.value.name).toBe('Dashboard')
+  })
+
+  test('does not redirect unauthenticated users to AccountSetup', async () => {
+    // store is null by default — global guard skips unauthenticated users
+    await router.push('/')
+    await router.isReady()
+
+    expect(router.currentRoute.value.name).toBe('Login')
+  })
+
+  test('does not redirect when navigating directly to AccountSetup', async () => {
+    const store = useUserStore()
+    store.bearerToken = 'token'
+    store.user = { id: 1, roles: [], system_user: false }  // no person — would normally redirect
+
+    await router.push('/account-setup')
+    await router.isReady()
+
+    // AccountSetup is exempt — user can access it even without a linked person
+    expect(router.currentRoute.value.name).toBe('AccountSetup')
   })
 })

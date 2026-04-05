@@ -150,3 +150,46 @@ test('handles corrupted localStorage data gracefully', () => {
   expect(store.user).toBeNull()
   expect(localStorage.getItem('user')).toBeNull()
 })
+
+test('hasPerson returns false when user is null', () => {
+  const store = useUserStore()
+  expect(store.hasPerson).toBe(false)
+})
+
+test('hasPerson returns false when user has no person_id', () => {
+  const store = useUserStore()
+  store.user = { id: 1, roles: [] }
+  expect(store.hasPerson).toBe(false)
+})
+
+test('hasPerson returns true when user has a person_id', () => {
+  const store = useUserStore()
+  store.user = { id: 1, person_id: 42 }
+  expect(store.hasPerson).toBe(true)
+})
+
+test('isSystemUser returns false when user is null', () => {
+  const store = useUserStore()
+  expect(store.isSystemUser).toBe(false)
+})
+
+test('isSystemUser returns false when system_user is false', () => {
+  const store = useUserStore()
+  store.user = { id: 1, system_user: false }
+  expect(store.isSystemUser).toBe(false)
+})
+
+test('isSystemUser returns true when system_user is true', () => {
+  const store = useUserStore()
+  store.user = { id: 1, system_user: true }
+  expect(store.isSystemUser).toBe(true)
+})
+
+test('setPersonId updates person_id on user and persists to localStorage', () => {
+  const store = useUserStore()
+  store.user = { id: 1, roles: [] }
+  store.setPersonId(99)
+  expect(store.user.person_id).toBe(99)
+  expect(store.hasPerson).toBe(true)
+  expect(JSON.parse(localStorage.getItem('user')).person_id).toBe(99)
+})
