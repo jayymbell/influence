@@ -19,6 +19,7 @@ services:
       DATABASE_USERNAME: ${POSTGRES_USER:-influence}
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
       DATABASE_NAME: ${POSTGRES_DB:-influence_development}
+      DATABASE_NAME_TEST: ${POSTGRES_DB_TEST:-influence_test}
       FRONTEND_URL: http://localhost:5173
       AI_SERVICE_URL: http://ai:8000
     depends_on:

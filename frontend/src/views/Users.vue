@@ -25,10 +25,10 @@
                     <v-col>
                         {{ user.email }} 
                     </v-col>
-                    <v-col class="text-right">
-                        <a style="margin-right: 5px;" @click="fetchUser(user)">Open</a> |
-                        <a v-if="!user.discarded_at" style="margin-right: 5px; margin-left: 5px;" @click="deactivateUser(user)">Deactivate</a>
-                        <a v-else style="margin-right: 5px; margin-left: 5px;" @click="reactivateUser(user)">Reactivate</a>
+                    <v-col cols="auto">
+                        <v-btn variant="text" size="small" @click="fetchUser(user)">Open</v-btn>
+                        <v-btn v-if="!user.discarded_at" variant="text" size="small" color="error" @click="deactivateUser(user)">Deactivate</v-btn>
+                        <v-btn v-else variant="text" size="small" color="success" @click="reactivateUser(user)">Reactivate</v-btn>
                     </v-col>
                 </v-row>
             </v-card>
@@ -50,8 +50,8 @@
                     <v-col>
                         {{ role.name }}
                     </v-col>
-                    <v-col class="text-right">
-                        <a style="float: right;" @click="deleteRole(role)">Delete</a>
+                    <v-col cols="auto">
+                        <v-btn variant="text" size="small" color="error" @click="deleteRole(role)">Remove</v-btn>
                     </v-col>
                 </v-row>
             </v-card>

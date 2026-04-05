@@ -18,6 +18,7 @@ Rails.application.routes.draw do
 
   resources :roles
   resources :users, only: [:index, :show, :destroy, :update]
+  resources :people, only: [:index, :show, :create, :update, :destroy]
 
   resources :conversations, only: [:index, :show, :create, :update, :destroy] do
     post :messages, to: "conversations#send_message", on: :member

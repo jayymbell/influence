@@ -5,11 +5,13 @@ default: &default
   host: <%= ENV['DATABASE_HOST'] %>
   username: <%= ENV['DATABASE_USERNAME'] %>
   password: <%= ENV['DATABASE_PASSWORD'] %>
-  database: <%= ENV['DATABASE_NAME'] %>
-  
+
 development:
   <<: *default
+  database: <%= ENV['DATABASE_NAME'] || 'influence_development' %>
 test:
   <<: *default
+  database: <%= ENV['DATABASE_NAME_TEST'] || 'influence_test' %>
 production:
   <<: *default
+  database: <%= ENV['DATABASE_NAME'] %>

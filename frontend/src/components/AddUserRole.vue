@@ -9,7 +9,6 @@
                 item-title="email"
                 item-value="id"
                 label="Select user by email"
-                required
                 v-model:search="search"
                 style="width: 400px;"
                 />
@@ -65,6 +64,7 @@ export default {
     });
 
     const addUserRole = async () => {
+      if (!selectedUser.value) return;
       try {
         const userIds = props.role.users.map(item => item.id)
         userIds.push(selectedUser.value);

@@ -11,6 +11,11 @@ import Account from '../views/Account.vue'
 import Roles from '../views/Roles.vue'
 import Users from '../views/Users.vue'
 import Conversations from '../views/Conversations.vue'
+import People from '../views/People.vue'
+import AccountSetup from '../views/AccountSetup.vue'
+
+// Routes that are exempt from the account-setup redirect
+const SETUP_EXEMPT = ['Login', 'Signup', 'Confirmation', 'PasswordReset', 'PasswordEdit', 'AccountSetup']
 
 const routes = [
   {
@@ -118,12 +123,52 @@ const routes = [
         next({ name: 'Dashboard' })
       }
     }
+  },
+  {
+    path: '/people',
+    name: 'People',
+    component: People,
+    beforeEnter: (to, from, next) => {
+      const userStore = useUserStore()
+      if (userStore.isLoggedIn && (userStore.hasRole('admin') || userStore.hasRole('staff'))) {
+        next()
+      } else {
+        next({ name: 'Dashboard' })
+      }
+    }
+  },
+  {
+    path: '/account-setup',
+    name: 'AccountSetup',
+    component: AccountSetup,
+    beforeEnter: (to, from, next) => {
+      const userStore = useUserStore()
+      if (!userStore.isLoggedIn) return next({ name: 'Login' })
+      // Redirect away if they already have a person
+      if (userStore.hasPerson) return next({ name: 'Dashboard' })
+      next()
+    }
   }
 ]
 
 const router = createRouter({
   history: createWebHistory(),
   routes
+})
+
+// Global guard: block non-admin/staff users who haven't completed profile setup
+router.beforeEach((to, from, next) => {
+  const userStore = useUserStore()
+
+  if (!userStore.isLoggedIn) return next()
+  if (SETUP_EXEMPT.includes(to.name)) return next()
+
+  const isAdminOrStaff = userStore.hasRole('admin') || userStore.hasRole('staff')
+  if (!isAdminOrStaff && !userStore.isSystemUser && !userStore.hasPerson) {
+    return next({ name: 'AccountSetup' })
+  }
+
+  next()
 })
 
 export default router

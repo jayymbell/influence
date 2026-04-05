@@ -15,6 +15,7 @@ class User < ApplicationRecord
   has_many :roles, through: :user_roles
   has_many :refresh_tokens, dependent: :destroy
   has_many :conversations, dependent: :destroy
+  has_one :person
 
   def active_for_authentication?
     super && !discarded?
@@ -26,5 +27,9 @@ class User < ApplicationRecord
 
   def admin?
     roles.exists?(name: 'admin')
+  end
+
+  def system?
+    system_user?
   end
 end

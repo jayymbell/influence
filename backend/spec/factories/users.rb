@@ -15,6 +15,10 @@ FactoryBot.define do
       end
     end
 
+    trait :system_user do
+      system_user { true }
+    end
+
     trait :with_role do
       transient do
         roles_count { 1 }

@@ -9,21 +9,21 @@
                     <v-col>
                         {{ role.name }} 
                     </v-col>
-                    <v-col class="text-right">
-                        <a style="margin-right: 5px;" @click="fetchRole(role)">Open</a> | 
-                        <a style="margin-right: 5px; margin-left: 5px;" @click="deleteRole(role)">Delete</a>
+                    <v-col cols="auto">
+                        <v-btn variant="text" size="small" @click="fetchRole(role)">Open</v-btn>
+                        <v-btn variant="text" size="small" color="error" @click="deleteRole(role)">Delete</v-btn>
                     </v-col>
                 </v-row>
             </v-card>
         </div>
-        <div v-else style="width: 500px;">
+        <div v-else>
         <h2>{{ role_name }}</h2>
         <h3>Users</h3>
         <AddUserRole :role="role" @user-roles-updated="fetchRole(role)"/>
         <v-divider class="my-4"></v-divider>
         <v-card v-for="user in role.users" :key="user.id" class="pa-3 mt-3" outlined>
-        <v-row>
-            <v-col cols="8">
+        <v-row align="center">
+            <v-col>
                 {{ user.email }}
             <v-chip
                 v-if="user.discarded_at"
@@ -31,13 +31,13 @@
                 style="float: right;"
             >Inactive</v-chip>
             </v-col>
-            <v-col class="text-right">
-                <a @click="removeUserRole(user.id)">Delete</a>
+            <v-col cols="auto">
+                <v-btn variant="text" size="small" color="error" @click="removeUserRole(user.id)">Remove</v-btn>
             </v-col>
         </v-row>
         </v-card>
         <br/>
-        <a v-if="role" style="width: 100%; margin-top: 10px;" @click="role = ''">Close</a>
+        <v-btn variant="text" size="small" class="mt-2" @click="role = ''">Close</v-btn>
         </div>
     </v-container>
 </template>

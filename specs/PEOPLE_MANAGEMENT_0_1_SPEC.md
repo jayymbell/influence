@@ -50,7 +50,6 @@ Establish a People foundation that supports internal users and external contacts
 - First name
 - Last name
 - Display name
-- Contact type (`client`, `coalition`, `legislative`, `staff`)
 - Active status (`active`, `inactive`)
 
 2. Optional:
@@ -59,9 +58,14 @@ Establish a People foundation that supports internal users and external contacts
 - Title
 - Organization name
 - Notes
-- Linked user ID (nullable)
 
-3. System fields:
+3. User linkage:
+- User ID (nullable, unique when present)
+- One person maps to at most one user
+- One user maps to at most one person
+- Can be set at creation or linked later via invite/claim or manual link
+
+4. System fields:
 - Created at / updated at
 - Created by / updated by
 - Deactivated at / deactivated by
@@ -69,11 +73,10 @@ Establish a People foundation that supports internal users and external contacts
 ## 7. Validation Rules
 1. First and last name required, min length 1.
 2. Display name required.
-3. Contact type must be in allowed enum values.
-4. Active status must be allowed enum value.
-5. If linked user exists, `people.user_id` must be unique.
-6. Soft-delete only; hard delete blocked in app logic.
-7. Email format validation if email is present.
+3. Active status must be one of allowed enum values.
+4. User ID must be unique across all people when present.
+5. Soft-delete only; hard delete blocked in app logic.
+6. Email format validation if email is present.
 
 ## 8. User Linkage Rules
 1. A user can map to at most one person.

@@ -18,7 +18,9 @@ export const createTestRouter = () => {
     { path: '/password/edit', name: 'PasswordEdit', component: { template: '<div>PasswordEdit</div>' } },
     { path: '/account', name: 'Account', component: { template: '<div>Account</div>' } },
     { path: '/roles', name: 'Roles', component: { template: '<div>Roles</div>' } },
-    { path: '/users', name: 'Users', component: { template: '<div>Users</div>' } }
+    { path: '/users', name: 'Users', component: { template: '<div>Users</div>' } },
+    { path: '/people', name: 'People', component: { template: '<div>People</div>' } },
+    { path: '/account-setup', name: 'AccountSetup', component: { template: '<div>AccountSetup</div>' } }
   ]
 
   return createRouter({
@@ -64,7 +66,7 @@ config.global.stubs = {
   'v-chip': { template: '<span class="v-chip"><slot /></span>' },
   'v-divider': { template: '<hr class="v-divider" />' },
   'v-switch': { 
-    template: '<input type="checkbox" :checked="modelValue" @change="$emit(\"update:modelValue\", $event.target.checked)" />',
+    template: "<input type=\"checkbox\" :checked=\"modelValue\" @change=\"$emit('update:modelValue', $event.target.checked)\" />",
     props: ['modelValue', 'label']
   },
   'v-dialog': { template: '<div v-if="modelValue" class="v-dialog"><slot /></div>', props: ['modelValue'] },
