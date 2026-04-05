@@ -61,7 +61,7 @@
           <PersonForm :form="form" />
         </v-card-text>
         <v-card-actions class="px-6 pb-5">
-          <v-btn v-if="editTarget" color="error" variant="text" @click="openDeleteDialog">Delete</v-btn>
+          <v-btn v-if="editTarget" color="error" variant="text" @click="openDeleteDialog">Deactivate</v-btn>
           <v-spacer />
           <v-btn variant="text" @click="closeDialog">Cancel</v-btn>
           <v-btn color="primary" @click="editTarget ? updatePerson() : createPerson()">Save</v-btn>
@@ -72,14 +72,14 @@
     <!-- Delete confirmation dialog -->
     <v-dialog v-model="deleteDialogOpen" max-width="420">
       <v-card>
-        <v-card-title class="pt-5 px-6">Delete person?</v-card-title>
+        <v-card-title class="pt-5 px-6">Deactivate person?</v-card-title>
         <v-card-text class="px-6">
-          <strong>{{ editTarget?.display_name }}</strong> will be permanently removed.
+          <strong>{{ editTarget?.display_name }}</strong> will be deactivated.
         </v-card-text>
         <v-card-actions class="px-6 pb-5">
           <v-spacer />
           <v-btn variant="text" @click="deleteDialogOpen = false">Cancel</v-btn>
-          <v-btn color="error" @click="deletePerson">Delete</v-btn>
+          <v-btn color="error" @click="deletePerson">Deactivate</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -209,7 +209,7 @@ const deletePerson = async () => {
   try {
     await api.delete('/people/' + editTarget.value.id)
     trackEvent('deleted person', { person_id: editTarget.value.id })
-    showSnackbar(['Person deleted'], 'success')
+    showSnackbar(['Person deactivated'], 'success')
     deleteDialogOpen.value = false
     closeDialog()
     fetchPeople(searchQuery.value)
