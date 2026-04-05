@@ -33,7 +33,7 @@ RSpec.describe UserPolicy do
         initial_count = User.count
         create_list(:user, 3)
         scope = UserPolicy::Scope.new(user, User).resolve
-        expect(scope.count).to eq(initial_count + 4) # initial + 3 created + 1 admin user
+        expect(scope.count).to eq(initial_count + 4) # 3 created + 1 admin user (the subject)
       end
     end
   end
