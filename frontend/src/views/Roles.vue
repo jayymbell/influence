@@ -16,7 +16,7 @@
                 </v-row>
             </v-card>
         </div>
-        <div v-else style="width: 500px;">
+        <div v-else>
         <h2>{{ role_name }}</h2>
         <h3>Users</h3>
         <AddUserRole :role="role" @user-roles-updated="fetchRole(role)"/>
