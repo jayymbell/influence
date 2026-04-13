@@ -33,7 +33,7 @@ jobs:
         run: docker compose run --rm backend bundle exec rspec
       
       - name: Upload backend coverage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: backend-coverage
           path: backend/coverage/
@@ -66,14 +66,14 @@ jobs:
         run: docker compose run --rm frontend yarn coverage:merge
       
       - name: Upload frontend coverage HTML report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: frontend-coverage-html
           path: frontend/coverage/lcov-report/
           retention-days: 30
       
       - name: Upload frontend coverage data
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: frontend-coverage-lcov
           path: |
@@ -83,7 +83,7 @@ jobs:
       
       - name: Upload Playwright test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-results
           path: frontend/test-results/
