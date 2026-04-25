@@ -127,11 +127,18 @@ const useUserStore = defineStore("UserStore", () => {
         user.value = { ...user.value, person_id: personId }
         localStorage.setItem('user', JSON.stringify(user.value))
     }
-    
-    
-    
 
-    return {user, bearerToken, isLoggedIn, hasPerson, isSystemUser, login, logout, update, hasRole, setPersonId}
+    const fetchPerson = async (personId) => {
+        const response = await api.get(`/people/${personId}`)
+        return response.data.person
+    }
+
+    const updatePerson = async (personId, data) => {
+        const response = await api.patch(`/people/${personId}`, { person: data })
+        return response.data.person
+    }
+
+    return {user, bearerToken, isLoggedIn, hasPerson, isSystemUser, login, logout, update, hasRole, setPersonId, fetchPerson, updatePerson}
 })
 
 export default useUserStore

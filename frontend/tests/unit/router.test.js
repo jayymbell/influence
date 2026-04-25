@@ -367,7 +367,7 @@ describe('Global beforeEach — AccountSetup redirect', () => {
     expect(router.currentRoute.value.name).toBe('Dashboard')
   })
 
-  test('allows staff user with no person through', async () => {
+  test('redirects staff user with no person to AccountSetup', async () => {
     const store = useUserStore()
     store.bearerToken = 'token'
     store.user = { id: 1, roles: [{ name: 'staff' }], system_user: false }
@@ -375,7 +375,7 @@ describe('Global beforeEach — AccountSetup redirect', () => {
     await router.push('/')
     await router.isReady()
 
-    expect(router.currentRoute.value.name).toBe('Dashboard')
+    expect(router.currentRoute.value.name).toBe('AccountSetup')
   })
 
   test('allows system user with no person through', async () => {

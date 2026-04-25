@@ -1,6 +1,12 @@
 class Users::ConfirmationsController < Devise::ConfirmationsController
   respond_to :json
 
+  def show
+    super do |resource|
+      resource.person&.update_column(:email, resource.email) if resource.errors.blank?
+    end
+  end
+
   private
 
   def respond_with(resource, _opts = {})
