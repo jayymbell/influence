@@ -174,8 +174,8 @@ router.beforeEach((to, from, next) => {
   if (!userStore.isLoggedIn) return next()
   if (SETUP_EXEMPT.includes(to.name)) return next()
 
-  const isAdminOrStaff = userStore.hasRole('admin') || userStore.hasRole('staff')
-  if (!isAdminOrStaff && !userStore.isSystemUser && !userStore.hasPerson) {
+  const isAdmin = userStore.hasRole('admin')
+  if (!isAdmin && !userStore.isSystemUser && !userStore.hasPerson) {
     return next({ name: 'AccountSetup' })
   }
 
