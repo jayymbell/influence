@@ -1,6 +1,6 @@
 class PeopleController < ApplicationController
   before_action :authenticate_user!
-  before_action :set_person, only: %i[show update destroy invite reactivate revoke_invitation]
+  before_action :set_person, only: %i[show update destroy invite reactivate revoke_invitation add_client]
 
   # GET /people
   def index
@@ -93,6 +93,47 @@ class PeopleController < ApplicationController
     raw_token = Invitation.generate_for(@person, invited_by: current_user)
     InvitationsMailer.invite(@person.active_invitation, raw_token).deliver_later
     render_success(message: 'Invitation sent.')
+  end
+
+  # POST /people/:id/add_client
+  def add_client
+    authorize @person, :add_client?
+
+    org_name = params[:organization_name].presence || @person.organization_name
+    unless org_name.present?
+      return render_error(errors: ['Person has no organization name'], message: 'Cannot add as client.')
+    end
+
+    # Find existing client by case-insensitive legal or display name match
+    client = Client.find_by('lower(legal_name) = lower(?) OR lower(display_name) = lower(?)', org_name, org_name)
+
+    # Create if not found
+    unless client
+      client = Client.new(legal_name: org_name, display_name: org_name,
+                          created_by: current_user, updated_by: current_user)
+      unless client.save
+        return render_error(errors: client.errors.full_messages, message: 'Client creation failed.')
+      end
+    end
+
+    @person.update!(client: client, updated_by: current_user)
+
+    client_role = Role.find_by!(name: 'client')
+
+    if @person.user.present?
+      @person.user.roles << client_role unless @person.user.roles.exists?(name: 'client')
+      render_success(data: { person: person_data(@person) }, message: 'Person added as client contact.')
+    elsif @person.email.present?
+      if @person.active_invitation
+        render_success(data: { person: person_data(@person) }, message: 'Person added as client contact. Invitation already pending.')
+      else
+        raw_token = Invitation.generate_for(@person, invited_by: current_user)
+        InvitationsMailer.invite(@person.active_invitation, raw_token).deliver_later
+        render_success(data: { person: person_data(@person) }, message: 'Person added as client contact. Invitation sent.')
+      end
+    else
+      render_success(data: { person: person_data(@person) }, message: 'Person added as client contact.')
+    end
   end
 
   # DELETE /people/:id/invitation

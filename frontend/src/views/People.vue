@@ -43,9 +43,30 @@
             <span v-if="p.title" class="text-medium-emphasis"> — {{ p.title }}</span>
             <span v-if="p.organization_name" class="text-medium-emphasis">, {{ p.organization_name }}</span>
             <div v-if="p.email" class="text-body-2 text-medium-emphasis">{{ p.email }}</div>
+            <div class="mt-1">
+              <v-chip
+                v-if="!p.user_id"
+                size="x-small"
+                color="default"
+                variant="outlined"
+                class="mr-1"
+              >No User</v-chip>
+              <v-chip
+                v-for="role in (p.user && p.user.roles || [])"
+                :key="role"
+                size="x-small"
+                :color="roleColor(role)"
+                variant="tonal"
+                class="mr-1"
+              >{{ role }}</v-chip>
+            </div>
           </v-col>
           <v-col cols="auto">
-            <v-btn variant="text" size="small" @click="openEditDialog(p)">Edit</v-btn>
+            <v-btn
+              v-if="canAddAsClient(p)"
+              variant="text" size="small" color="secondary"
+              @click="openClientDialog(p)"
+            >Client</v-btn>
             <v-btn
               v-if="p.email && !p.user_id && !p.invitation_pending && !p.discarded_at"
               variant="text" size="small" color="primary"
@@ -56,6 +77,7 @@
               variant="text" size="small" color="warning"
               @click="revokeInvitation(p)"
             >Revoke Invite</v-btn>
+            <v-btn variant="text" size="small" @click="openEditDialog(p)">Edit</v-btn>
           </v-col>
         </v-row>
       </v-card>
@@ -76,6 +98,29 @@
           <v-spacer />
           <v-btn variant="text" @click="closeDialog">Cancel</v-btn>
           <v-btn color="primary" @click="editTarget ? updatePerson() : createPerson()">Save</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Add Client dialog -->
+    <v-dialog v-model="clientDialogOpen" max-width="500" persistent>
+      <v-card>
+        <v-card-title class="pt-5 px-6">Add as Client Contact</v-card-title>
+        <v-card-text class="px-6">
+          <p class="text-body-2 text-medium-emphasis mb-4">
+            Enter the client name. If a matching client already exists it will be used;
+            otherwise a new client will be created.
+          </p>
+          <v-text-field
+            v-model="clientForm.organization_name"
+            label="Client / Organization Name *"
+            autofocus
+          />
+        </v-card-text>
+        <v-card-actions class="px-6 pb-5">
+          <v-spacer />
+          <v-btn variant="text" @click="clientDialogOpen = false">Cancel</v-btn>
+          <v-btn color="primary" @click="addClient">Confirm</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -110,7 +155,10 @@ const searchQuery = ref('')
 const showActive = ref(true)
 const dialogOpen = ref(false)
 const deleteDialogOpen = ref(false)
+const clientDialogOpen = ref(false)
 const editTarget = ref(null)
+const clientTarget = ref(null)
+const clientForm = ref({ organization_name: '' })
 const showSnackbar = inject('showSnackbar')
 
 const blankForm = () => ({
@@ -267,6 +315,38 @@ const revokeInvitation = async (p) => {
   }
 }
 
+const roleColor = (role) => {
+  const colors = { admin: 'error', staff: 'purple', client: 'secondary' }
+  return colors[role] || 'secondary'
+}
+
+const canAddAsClient = (p) => {
+  if (p.discarded_at || p.client_id != null) return false
+  if (!p.user_id) return true
+  if (p.user && (!p.user.roles || p.user.roles.length === 0)) return true
+  return false
+}
+
+const openClientDialog = (p) => {
+  clientTarget.value = p
+  clientForm.value = { organization_name: p.organization_name || '' }
+  clientDialogOpen.value = true
+}
+
+const addClient = async () => {
+  try {
+    const response = await api.post(`/people/${clientTarget.value.id}/add_client`, clientForm.value)
+    trackEvent('added client', { person_id: clientTarget.value.id })
+    showSnackbar([response.data.message || 'Person added as client contact'], 'success')
+    clientDialogOpen.value = false
+    clientTarget.value = null
+    fetchPeople(searchQuery.value)
+  } catch (error) {
+    const e = error.response?.data?.errors || ['An unknown error occurred']
+    showSnackbar(e, 'error')
+  }
+}
+
 onMounted(() => fetchPeople())
 
 defineExpose({
@@ -290,6 +370,12 @@ defineExpose({
   deletePerson,
   reactivatePerson,
   invitePerson,
-  revokeInvitation
+  revokeInvitation,
+  canAddAsClient,
+  openClientDialog,
+  clientDialogOpen,
+  clientTarget,
+  clientForm,
+  addClient
 })
 </script>

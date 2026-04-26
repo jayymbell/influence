@@ -22,6 +22,7 @@ Rails.application.routes.draw do
     member do
       post   :invite
       post   :reactivate
+      post   :add_client
       delete :invitation, action: :revoke_invitation
     end
   end

@@ -23,6 +23,7 @@ const menuItems = computed(() => {
     { divider: true, show: isAdminOrStaff.value },
     { subtitle: 'Admin', show: isAdminOrStaff.value },
     { title: 'People', icon: 'mdi-account-card', to: '/people', show: isAdminOrStaff.value },
+    { title: 'Clients', icon: 'mdi-briefcase-account', to: '/clients', show: isAdminOrStaff.value },
     { title: 'Roles', icon: 'mdi-shield-account', to: '/roles', show: isAdmin.value },
     { title: 'Users', icon: 'mdi-account-group', to: '/users', show: isAdmin.value },
   ]

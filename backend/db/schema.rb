@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_04_25_000001) do
+ActiveRecord::Schema[8.0].define(version: 2026_04_26_200000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -121,8 +121,10 @@ ActiveRecord::Schema[8.0].define(version: 2026_04_25_000001) do
     t.bigint "deactivated_by_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "client_id"
     t.index "lower((display_name)::text)", name: "index_people_on_lower_display_name"
     t.index "lower((email)::text)", name: "index_people_on_lower_email", where: "(email IS NOT NULL)"
+    t.index ["client_id"], name: "index_people_on_client_id"
     t.index ["created_by_id"], name: "index_people_on_created_by_id"
     t.index ["deactivated_by_id"], name: "index_people_on_deactivated_by_id"
     t.index ["discarded_at"], name: "index_people_on_discarded_at"
@@ -189,6 +191,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_04_25_000001) do
   add_foreign_key "invitations", "people"
   add_foreign_key "invitations", "users", column: "created_by_id"
   add_foreign_key "messages", "conversations"
+  add_foreign_key "people", "clients"
   add_foreign_key "people", "users"
   add_foreign_key "people", "users", column: "created_by_id"
   add_foreign_key "people", "users", column: "deactivated_by_id"

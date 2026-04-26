@@ -20,6 +20,7 @@ export const createTestRouter = () => {
     { path: '/roles', name: 'Roles', component: { template: '<div>Roles</div>' } },
     { path: '/users', name: 'Users', component: { template: '<div>Users</div>' } },
     { path: '/people', name: 'People', component: { template: '<div>People</div>' } },
+    { path: '/clients', name: 'Clients', component: { template: '<div>Clients</div>' } },
     { path: '/account-setup', name: 'AccountSetup', component: { template: '<div>AccountSetup</div>' } },
     { path: '/invite/accept', name: 'InviteAccept', component: { template: '<div>InviteAccept</div>' } }
   ]
