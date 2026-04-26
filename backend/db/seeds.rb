@@ -9,7 +9,7 @@
 #   end
 
 # Seed core roles
-%w[admin staff].each { |name| Role.find_or_create_by!(name: name) }
+%w[admin staff client].each { |name| Role.find_or_create_by!(name: name) }
 
 # Admin user
 User.find_or_initialize_by(email: 'influence-admin@example.com').tap do |user|

@@ -26,6 +26,12 @@ Rails.application.routes.draw do
     end
   end
 
+  resources :clients, only: [:index, :show, :create, :update, :destroy] do
+    member do
+      post :reactivate
+    end
+  end
+
   post 'invitations/accept', to: 'invitations#accept'
 
   resources :conversations, only: [:index, :show, :create, :update, :destroy] do

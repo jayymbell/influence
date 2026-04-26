@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_04_05_000001) do
+ActiveRecord::Schema[8.0].define(version: 2026_04_25_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -55,6 +55,21 @@ ActiveRecord::Schema[8.0].define(version: 2026_04_05_000001) do
     t.index ["user_id"], name: "index_ahoy_visits_on_user_id"
     t.index ["visit_token"], name: "index_ahoy_visits_on_visit_token", unique: true
     t.index ["visitor_token", "started_at"], name: "index_ahoy_visits_on_visitor_token_and_started_at"
+  end
+
+  create_table "clients", force: :cascade do |t|
+    t.string "legal_name", null: false
+    t.string "display_name", null: false
+    t.datetime "discarded_at"
+    t.datetime "deactivated_at"
+    t.bigint "created_by_id"
+    t.bigint "updated_by_id"
+    t.bigint "deactivated_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index "lower((legal_name)::text)", name: "index_clients_on_lower_legal_name", unique: true
+    t.index ["discarded_at", "updated_at"], name: "index_clients_on_discarded_at_and_updated_at"
+    t.index ["discarded_at"], name: "index_clients_on_discarded_at"
   end
 
   create_table "conversations", force: :cascade do |t|
@@ -167,6 +182,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_04_05_000001) do
     t.index ["system_user"], name: "index_users_on_system_user"
   end
 
+  add_foreign_key "clients", "users", column: "created_by_id"
+  add_foreign_key "clients", "users", column: "deactivated_by_id"
+  add_foreign_key "clients", "users", column: "updated_by_id"
   add_foreign_key "conversations", "users"
   add_foreign_key "invitations", "people"
   add_foreign_key "invitations", "users", column: "created_by_id"
