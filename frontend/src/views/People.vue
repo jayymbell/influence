@@ -68,7 +68,7 @@
               @click="openClientDialog(p)"
             >Client</v-btn>
             <v-btn
-              v-if="p.user_id && !(p.user && p.user.roles && (p.user.roles.includes('staff') || p.user.roles.includes('client'))) && !p.discarded_at"
+              v-if="canAssignStaff && p.user_id && !(p.user && p.user.roles && (p.user.roles.includes('staff') || p.user.roles.includes('client'))) && !p.discarded_at"
               variant="text" size="small" color="purple"
               @click="assignStaff(p)"
             >Staff</v-btn>
@@ -173,6 +173,7 @@ import { debounce } from 'lodash'
 import api from '../services/api.js'
 import { trackEvent } from '../services/ahoy.js'
 import PersonForm from '../components/PersonForm.vue'
+import useUserStore from '../stores/UserStore.js'
 
 const people = ref([])
 const loading = ref(false)
@@ -188,6 +189,8 @@ const clientSuggestions = ref([])
 const forceCreate = ref(false)
 const selectedExistingClient = ref(false)
 const showSnackbar = inject('showSnackbar')
+const userStore = useUserStore()
+const canAssignStaff = userStore.hasRole('admin') || userStore.hasRole('manager')
 
 const blankForm = () => ({
   first_name: '',
@@ -344,7 +347,7 @@ const revokeInvitation = async (p) => {
 }
 
 const roleColor = (role) => {
-  const colors = { admin: 'error', staff: 'purple', client: 'secondary' }
+  const colors = { admin: 'error', staff: 'purple', client: 'secondary', manager: 'indigo' }
   return colors[role] || 'secondary'
 }
 

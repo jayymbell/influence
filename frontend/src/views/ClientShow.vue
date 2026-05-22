@@ -30,6 +30,7 @@
       <!-- Tab menu -->
       <v-tabs v-model="activeTab" class="mt-4">
         <v-tab value="contacts">Contacts</v-tab>
+        <v-tab value="staff">Staff</v-tab>
       </v-tabs>
 
       <v-divider />
@@ -64,6 +65,55 @@
             <p v-else class="text-medium-emphasis mt-4">No contacts found for this client.</p>
           </template>
         </v-window-item>
+
+        <!-- Staff tab -->
+        <v-window-item value="staff">
+          <v-row v-if="canManageStaff" align="center" class="mb-2">
+            <v-col cols="8">
+              <v-autocomplete
+                v-model="selectedStaff"
+                :items="availableStaffOptions"
+                label="Select staff member"
+                clearable
+                no-data-text="No staff found"
+              />
+            </v-col>
+            <v-col cols="auto">
+              <v-btn
+                color="primary"
+                :disabled="!selectedStaff"
+                @click="addStaff"
+              >Add</v-btn>
+            </v-col>
+          </v-row>
+
+          <template v-if="staffLoading">
+            <v-skeleton-loader v-for="n in 3" :key="n" type="list-item" class="mb-2" />
+          </template>
+
+          <template v-else>
+            <v-table v-if="staff.length" hover>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="s in staff" :key="s.id">
+                  <td>{{ s.display_name || '—' }}</td>
+                  <td>{{ s.email }}</td>
+                  <td class="text-right">
+                    <v-btn v-if="canManageStaff" variant="text" size="small" color="error" @click="removeStaff(s.id)">Remove</v-btn>
+                  </td>
+                </tr>
+              </tbody>
+            </v-table>
+
+            <p v-else class="text-medium-emphasis mt-4">No staff assigned to this client.</p>
+          </template>
+        </v-window-item>
       </v-window>
     </template>
   </v-container>
@@ -73,14 +123,22 @@
 import { onMounted, ref, inject } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '../services/api.js'
+import useUserStore from '../stores/UserStore.js'
 
 const route = useRoute()
 const showSnackbar = inject('showSnackbar')
+const userStore = useUserStore()
+const canManageStaff = userStore.hasRole('admin') || userStore.hasRole('manager')
 
 const client = ref(null)
 const loading = ref(false)
 const people = ref([])
 const peopleLoading = ref(false)
+const staff = ref([])
+const staffLoading = ref(false)
+const availableStaffOptions = ref([])
+const selectedStaff = ref(null)
+
 const activeTab = ref('contacts')
 
 const fetchClient = async () => {
@@ -109,10 +167,67 @@ const fetchPeople = async () => {
   }
 }
 
+const fetchStaff = async () => {
+  staffLoading.value = true
+  try {
+    const response = await api.get('/clients/' + route.params.id + '/staff')
+    staff.value = response.data.staff
+  } catch (error) {
+    const e = error.response?.data?.errors || ['An unknown error occurred']
+    showSnackbar(e, 'error')
+  } finally {
+    staffLoading.value = false
+  }
+}
+
+const fetchAvailableStaff = async () => {
+  try {
+    const response = await api.get('/clients/' + route.params.id + '/staff/available')
+    availableStaffOptions.value = (response.data.users || []).map(u => ({
+      title: u.display_name ? `${u.display_name} (${u.email})` : u.email,
+      value: u.id
+    }))
+  } catch (error) {
+    const e = error.response?.data?.errors || ['An unknown error occurred']
+    showSnackbar(e, 'error')
+  }
+}
+
+const addStaff = async () => {
+  try {
+    const response = await api.post('/clients/' + route.params.id + '/staff', { user_id: selectedStaff.value })
+    staff.value = response.data.staff
+    selectedStaff.value = null
+    if (canManageStaff) fetchAvailableStaff()
+    showSnackbar(['Staff added'], 'success')
+  } catch (error) {
+    const e = error.response?.data?.errors || ['An unknown error occurred']
+    showSnackbar(e, 'error')
+  }
+}
+
+const removeStaff = async (userId) => {
+  try {
+    const response = await api.delete('/clients/' + route.params.id + '/staff/' + userId)
+    staff.value = response.data.staff
+    if (canManageStaff) fetchAvailableStaff()
+    showSnackbar(['Staff removed'], 'success')
+  } catch (error) {
+    const e = error.response?.data?.errors || ['An unknown error occurred']
+    showSnackbar(e, 'error')
+  }
+}
+
 onMounted(async () => {
   await fetchClient()
   fetchPeople()
+  fetchStaff()
+  if (canManageStaff) fetchAvailableStaff()
 })
 
-defineExpose({ client, loading, people, peopleLoading, activeTab, fetchClient, fetchPeople })
+defineExpose({
+  client, loading, people, peopleLoading, activeTab, fetchClient, fetchPeople,
+  staff, staffLoading, availableStaffOptions, selectedStaff, canManageStaff,
+  fetchStaff, fetchAvailableStaff, addStaff, removeStaff
+})
 </script>

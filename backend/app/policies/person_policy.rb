@@ -36,7 +36,7 @@ class PersonPolicy < ApplicationPolicy
   end
 
   def assign_staff?
-    user.admin?
+    user.admin? || user.manager?
   end
 
   class Scope < ApplicationPolicy::Scope

@@ -35,6 +35,11 @@ Rails.application.routes.draw do
     member do
       post :reactivate
     end
+    resources :staff, only: [:index, :create, :destroy], controller: 'client_staff' do
+      collection do
+        get :available
+      end
+    end
   end
 
   post 'invitations/accept', to: 'invitations#accept'

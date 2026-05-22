@@ -4,6 +4,8 @@ class Client < ApplicationRecord
   include Discard::Model
 
   has_many :people
+  has_many :client_staff, dependent: :destroy
+  has_many :staff, through: :client_staff, source: :user
 
   belongs_to :created_by,     class_name: 'User', optional: true
   belongs_to :updated_by,     class_name: 'User', optional: true

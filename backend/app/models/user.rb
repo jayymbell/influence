@@ -33,6 +33,10 @@ class User < ApplicationRecord
     roles.exists?(name: 'staff')
   end
 
+  def manager?
+    roles.exists?(name: 'manager')
+  end
+
   def client?
     roles.exists?(name: 'client')
   end

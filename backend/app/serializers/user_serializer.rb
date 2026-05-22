@@ -6,6 +6,10 @@ class UserSerializer
     user.person&.id
   end
 
+  attribute :person_display_name do |user|
+    user.person&.display_name
+  end
+
   attribute :roles do |user|
     user.roles.select(:id, :name, :description)
   end

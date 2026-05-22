@@ -2,11 +2,11 @@
 
 class ClientPolicy < ApplicationPolicy
   def index?
-    admin_or_staff?
+    admin_or_staff? || user.manager?
   end
 
   def show?
-    admin_or_staff?
+    admin_or_staff? || user.manager?
   end
 
   def create?
@@ -25,9 +25,13 @@ class ClientPolicy < ApplicationPolicy
     admin_or_staff?
   end
 
+  def manage_staff?
+    user.admin? || user.manager?
+  end
+
   class Scope < ApplicationPolicy::Scope
     def resolve
-      if user.admin? || user.staff?
+      if user.admin? || user.staff? || user.manager?
         scope.all
       else
         scope.none

@@ -146,7 +146,7 @@ const routes = [
     component: Clients,
     beforeEnter: (to, from, next) => {
       const userStore = useUserStore()
-      if (userStore.isLoggedIn && (userStore.hasRole('admin') || userStore.hasRole('staff'))) {
+      if (userStore.isLoggedIn && (userStore.hasRole('admin') || userStore.hasRole('staff') || userStore.hasRole('manager'))) {
         next()
       } else {
         next({ name: 'Dashboard' })
@@ -159,7 +159,7 @@ const routes = [
     component: ClientShow,
     beforeEnter: (to, from, next) => {
       const userStore = useUserStore()
-      if (userStore.isLoggedIn && (userStore.hasRole('admin') || userStore.hasRole('staff'))) {
+      if (userStore.isLoggedIn && (userStore.hasRole('admin') || userStore.hasRole('staff') || userStore.hasRole('manager'))) {
         next()
       } else {
         next({ name: 'Dashboard' })

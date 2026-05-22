@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_05_22_000001) do
+ActiveRecord::Schema[8.0].define(version: 2026_05_22_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -56,6 +56,16 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_22_000001) do
     t.index ["user_id"], name: "index_ahoy_visits_on_user_id"
     t.index ["visit_token"], name: "index_ahoy_visits_on_visit_token", unique: true
     t.index ["visitor_token", "started_at"], name: "index_ahoy_visits_on_visitor_token_and_started_at"
+  end
+
+  create_table "client_staff", force: :cascade do |t|
+    t.bigint "client_id", null: false
+    t.bigint "user_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["client_id", "user_id"], name: "index_client_staff_on_client_id_and_user_id", unique: true
+    t.index ["client_id"], name: "index_client_staff_on_client_id"
+    t.index ["user_id"], name: "index_client_staff_on_user_id"
   end
 
   create_table "clients", force: :cascade do |t|
@@ -185,6 +195,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_22_000001) do
     t.index ["system_user"], name: "index_users_on_system_user"
   end
 
+  add_foreign_key "client_staff", "clients"
+  add_foreign_key "client_staff", "users"
   add_foreign_key "clients", "users", column: "created_by_id"
   add_foreign_key "clients", "users", column: "deactivated_by_id"
   add_foreign_key "clients", "users", column: "updated_by_id"

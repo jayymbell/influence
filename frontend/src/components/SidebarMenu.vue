@@ -10,7 +10,7 @@ const sidebarStore = useSidebarStore()
 
 const isLoggedIn = computed(() => userStore.isLoggedIn)
 const isAdmin = computed(() => userStore.hasRole('admin'))
-const isAdminOrStaff = computed(() => userStore.hasRole('admin') || userStore.hasRole('staff'))
+const isAdminOrStaff = computed(() => userStore.hasRole('admin') || userStore.hasRole('staff') || userStore.hasRole('manager'))
 
 const menuItems = computed(() => {
   const items = [
