@@ -16,6 +16,8 @@ import Clients from '../views/Clients.vue'
 import ClientShow from '../views/ClientShow.vue'
 import Issues from '../views/Issues.vue'
 import IssueShow from '../views/IssueShow.vue'
+import Bills from '../views/Bills.vue'
+import BillShow from '../views/BillShow.vue'
 import AccountSetup from '../views/AccountSetup.vue'
 import InviteAccept from '../views/InviteAccept.vue'
 
@@ -204,6 +206,32 @@ const routes = [
       // Redirect away if they already have a person
       if (userStore.hasPerson) return next({ name: 'Dashboard' })
       next()
+    }
+  },
+  {
+    path: '/bills',
+    name: 'Bills',
+    component: Bills,
+    beforeEnter: (to, from, next) => {
+      const userStore = useUserStore()
+      if (userStore.isLoggedIn && (userStore.hasRole('admin') || userStore.hasRole('staff') || userStore.hasRole('manager'))) {
+        next()
+      } else {
+        next({ name: 'Dashboard' })
+      }
+    }
+  },
+  {
+    path: '/bills/:id',
+    name: 'BillShow',
+    component: BillShow,
+    beforeEnter: (to, from, next) => {
+      const userStore = useUserStore()
+      if (userStore.isLoggedIn && (userStore.hasRole('admin') || userStore.hasRole('staff') || userStore.hasRole('manager'))) {
+        next()
+      } else {
+        next({ name: 'Dashboard' })
+      }
     }
   },
   {

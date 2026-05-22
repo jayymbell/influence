@@ -76,6 +76,7 @@
       <v-tabs v-model="activeTab" class="mt-4">
         <v-tab value="people">People</v-tab>
         <v-tab v-if="canViewClients" value="clients">Clients</v-tab>
+        <v-tab value="bills">Bills</v-tab>
       </v-tabs>
       <v-divider />
 
@@ -175,6 +176,55 @@
             </v-table>
           </template>
         </v-window-item>
+
+        <!-- Bills tab -->
+        <v-window-item value="bills">
+          <v-row align="center" class="mb-2">
+            <v-col cols="8">
+              <v-autocomplete
+                v-model="selectedBill"
+                :items="availableBillOptions"
+                label="Link bill"
+                clearable
+                no-data-text="No bills available"
+              />
+            </v-col>
+            <v-col cols="auto">
+              <v-btn color="primary" :disabled="!selectedBill" @click="linkBill">Link</v-btn>
+            </v-col>
+          </v-row>
+
+          <template v-if="billsLoading">
+            <v-skeleton-loader v-for="n in 3" :key="n" type="list-item" class="mb-2" />
+          </template>
+          <template v-else>
+            <v-table v-if="issue.bills?.length" hover>
+              <thead>
+                <tr>
+                  <th>Bill Number</th>
+                  <th>Title</th>
+                  <th>Chamber</th>
+                  <th>Status</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="b in issue.bills" :key="b.id">
+                  <td>{{ b.bill_number || '—' }}</td>
+                  <td>
+                    <router-link :to="{ name: 'BillShow', params: { id: b.id } }">{{ b.title }}</router-link>
+                  </td>
+                  <td>{{ b.chamber || '—' }}</td>
+                  <td><v-chip size="x-small" variant="tonal">{{ b.status }}</v-chip></td>
+                  <td class="text-right">
+                    <v-btn variant="text" size="small" color="error" @click="unlinkBill(b.id)">Unlink</v-btn>
+                  </td>
+                </tr>
+              </tbody>
+            </v-table>
+            <p v-else class="text-medium-emphasis mt-4">No bills linked to this issue.</p>
+          </template>
+        </v-window-item>
       </v-window>
     </template>
 
@@ -238,6 +288,7 @@
 import { onMounted, ref, inject, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import issuesApi from '../services/issues.js'
+import billsApi from '../services/bills.js'
 import api from '../services/api.js'
 import useUserStore from '../stores/UserStore.js'
 
@@ -257,8 +308,11 @@ const confirmClose = ref(false)
 const editDialogOpen = ref(false)
 const selectedPerson = ref(null)
 const selectedShareClient = ref(null)
+const billsLoading = ref(false)
+const selectedBill = ref(null)
 const availablePeopleOptions = ref([])
 const availableShareClientOptions = ref([])
+const availableBillOptions = ref([])
 
 const form = ref({ title: '', description: '', notes: '', tags: [] })
 
@@ -423,9 +477,51 @@ const unshareFromClient = async (clientId) => {
   }
 }
 
+const fetchAvailableBills = async () => {
+  try {
+    const response = await billsApi.getAll()
+    const linkedIds = (issue.value?.bills || []).map((b) => b.id)
+    availableBillOptions.value = (response.data.bills || [])
+      .filter((b) => !linkedIds.includes(b.id))
+      .map((b) => ({ title: b.bill_number ? `${b.bill_number} — ${b.title}` : b.title, value: b.id }))
+  } catch (_) { /* silent */ }
+}
+
+const linkBill = async () => {
+  billsLoading.value = true
+  try {
+    const response = await billsApi.linkBillToIssue(issue.value.id, selectedBill.value)
+    issue.value.bills = response.data.bills
+    selectedBill.value = null
+    fetchAvailableBills()
+    showSnackbar(['Bill linked.'], 'success')
+  } catch (error) {
+    const e = error.response?.data?.errors || ['An unknown error occurred']
+    showSnackbar(e, 'error')
+  } finally {
+    billsLoading.value = false
+  }
+}
+
+const unlinkBill = async (billId) => {
+  billsLoading.value = true
+  try {
+    const response = await billsApi.unlinkBillFromIssue(issue.value.id, billId)
+    issue.value.bills = response.data.bills
+    fetchAvailableBills()
+    showSnackbar(['Bill unlinked.'], 'success')
+  } catch (error) {
+    const e = error.response?.data?.errors || ['An unknown error occurred']
+    showSnackbar(e, 'error')
+  } finally {
+    billsLoading.value = false
+  }
+}
+
 onMounted(async () => {
   await fetchIssue()
   fetchAvailablePeople()
+  fetchAvailableBills()
   if (canShare) fetchAvailableShareClients()
 })
 
@@ -433,6 +529,8 @@ defineExpose({
   issue, loading, activeTab, confirmClose, editDialogOpen, form,
   fetchIssue, openEditDialog, saveEdit, deactivate, closeIssue, reactivate,
   addPerson, removePerson, shareWithClient, unshareFromClient,
-  selectedPerson, selectedShareClient, canShare, canViewClients
+  selectedPerson, selectedShareClient, canShare, canViewClients,
+  billsLoading, selectedBill, availableBillOptions,
+  fetchAvailableBills, linkBill, unlinkBill
 })
 </script>

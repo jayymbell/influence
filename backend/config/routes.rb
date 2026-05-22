@@ -50,6 +50,13 @@ Rails.application.routes.draw do
     end
     resources :clients, only: [:index, :create, :destroy], controller: 'issue_clients'
     resources :people,  only: [:index, :create, :destroy], controller: 'issue_people'
+    resources :bills,   only: [:index, :create, :destroy], controller: 'issue_bills'
+  end
+
+  resources :bills, only: [:index, :show, :create, :update, :destroy] do
+    resources :issues,  only: [:index, :create, :destroy], controller: 'bill_issues'
+    resources :clients, only: [:index, :create, :destroy], controller: 'bill_clients'
+    resources :people,  only: [:index, :create, :destroy], controller: 'bill_people'
   end
 
   post 'invitations/accept', to: 'invitations#accept'
