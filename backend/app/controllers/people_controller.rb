@@ -91,7 +91,8 @@ class PeopleController < ApplicationController
       return render_error(errors: ['Person already has a user account'], message: 'Cannot send invitation.')
     end
 
-    raw_token = Invitation.generate_for(@person, invited_by: current_user)
+    invite_as = @person.client_id.present? ? 'client' : 'staff'
+    raw_token = Invitation.generate_for(@person, invited_by: current_user, invite_as: invite_as)
     InvitationsMailer.invite(@person.active_invitation, raw_token).deliver_later
     render_success(message: 'Invitation sent.')
   end

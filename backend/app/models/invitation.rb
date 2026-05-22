@@ -16,7 +16,7 @@ class Invitation < ApplicationRecord
     update!(revoked_at: Time.current)
   end
 
-  def self.generate_for(person, invited_by: nil)
+  def self.generate_for(person, invited_by: nil, invite_as: nil)
     raw_token = SecureRandom.urlsafe_base64(32)
     digest    = Digest::SHA256.hexdigest(raw_token)
 
@@ -26,7 +26,8 @@ class Invitation < ApplicationRecord
       token_digest:   digest,
       email_snapshot: person.email,
       expires_at:     EXPIRY_DAYS.days.from_now,
-      created_by:     invited_by
+      created_by:     invited_by,
+      invite_as:      invite_as
     )
 
     raw_token
