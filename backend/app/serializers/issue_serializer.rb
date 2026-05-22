@@ -25,7 +25,7 @@ class IssueSerializer
   end
 
   attribute :people do |issue|
-    issue.issue_people.joins(:person).includes(:person).order('people.last_name ASC').map do |ip|
+    issue.issue_people.joins(:person).includes(:person).order('people.organization_name ASC, people.last_name ASC').map do |ip|
       next nil unless ip.person
 
       {
