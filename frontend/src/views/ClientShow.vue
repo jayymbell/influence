@@ -31,6 +31,7 @@
       <v-tabs v-model="activeTab" class="mt-4">
         <v-tab value="contacts">Contacts</v-tab>
         <v-tab value="staff">Staff</v-tab>
+        <v-tab value="issues">Issues</v-tab>
       </v-tabs>
 
       <v-divider />
@@ -114,6 +115,36 @@
             <p v-else class="text-medium-emphasis mt-4">No staff assigned to this client.</p>
           </template>
         </v-window-item>
+
+        <!-- Issues tab -->
+        <v-window-item value="issues">
+          <template v-if="issuesLoading">
+            <v-skeleton-loader v-for="n in 4" :key="n" type="list-item" class="mb-2" />
+          </template>
+          <template v-else>
+            <v-table v-if="clientIssues.length" hover>
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Status</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="issue in clientIssues" :key="issue.id">
+                  <td>{{ issue.title }}</td>
+                  <td>
+                    <v-chip size="x-small" :color="issueStatusColor(issue.status)" variant="tonal">{{ issue.status }}</v-chip>
+                  </td>
+                  <td class="text-right">
+                    <v-btn variant="text" size="small" :to="{ name: 'IssueShow', params: { id: issue.id } }">View</v-btn>
+                  </td>
+                </tr>
+              </tbody>
+            </v-table>
+            <p v-else class="text-medium-emphasis mt-4">No issues found for this client.</p>
+          </template>
+        </v-window-item>
       </v-window>
     </template>
   </v-container>
@@ -123,6 +154,7 @@
 import { onMounted, ref, inject } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '../services/api.js'
+import issuesApi from '../services/issues.js'
 import useUserStore from '../stores/UserStore.js'
 
 const route = useRoute()
@@ -140,6 +172,8 @@ const availableStaffOptions = ref([])
 const selectedStaff = ref(null)
 
 const activeTab = ref('contacts')
+const clientIssues = ref([])
+const issuesLoading = ref(false)
 
 const fetchClient = async () => {
   loading.value = true
@@ -218,16 +252,37 @@ const removeStaff = async (userId) => {
   }
 }
 
+const fetchIssues = async () => {
+  issuesLoading.value = true
+  try {
+    const response = await issuesApi.getAll({ client_id: route.params.id })
+    clientIssues.value = response.data.issues
+  } catch (error) {
+    const e = error.response?.data?.errors || ['An unknown error occurred']
+    showSnackbar(e, 'error')
+  } finally {
+    issuesLoading.value = false
+  }
+}
+
+const issueStatusColor = (status) => {
+  if (status === 'active')   return 'success'
+  if (status === 'inactive') return 'warning'
+  return 'default'
+}
+
 onMounted(async () => {
   await fetchClient()
   fetchPeople()
   fetchStaff()
+  fetchIssues()
   if (canManageStaff) fetchAvailableStaff()
 })
 
 defineExpose({
   client, loading, people, peopleLoading, activeTab, fetchClient, fetchPeople,
   staff, staffLoading, availableStaffOptions, selectedStaff, canManageStaff,
-  fetchStaff, fetchAvailableStaff, addStaff, removeStaff
+  fetchStaff, fetchAvailableStaff, addStaff, removeStaff,
+  clientIssues, issuesLoading, fetchIssues, issueStatusColor
 })
 </script>

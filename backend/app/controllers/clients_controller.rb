@@ -21,7 +21,7 @@ class ClientsController < ApplicationController
 
     page     = (params[:page] || 1).to_i
     per_page = (params[:per_page] || 25).to_i
-    @clients = @clients.order(updated_at: :desc).offset((page - 1) * per_page).limit(per_page)
+    @clients = @clients.order(display_name: :asc).offset((page - 1) * per_page).limit(per_page)
 
     serialized = @clients.map { |c| ClientSerializer.new(c).serializable_hash[:data][:attributes] }
     render_success(data: { clients: serialized }, message: 'Clients found.')

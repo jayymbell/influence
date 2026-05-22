@@ -7,6 +7,10 @@ class Client < ApplicationRecord
   has_many :client_staff, dependent: :destroy
   has_many :staff, through: :client_staff, source: :user
 
+  has_many :issues, dependent: :destroy
+  has_many :client_issues, dependent: :destroy
+  has_many :shared_issues, through: :client_issues, source: :issue
+
   belongs_to :created_by,     class_name: 'User', optional: true
   belongs_to :updated_by,     class_name: 'User', optional: true
   belongs_to :deactivated_by, class_name: 'User', optional: true

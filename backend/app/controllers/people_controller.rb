@@ -18,7 +18,7 @@ class PeopleController < ApplicationController
 
     page     = (params[:page] || 1).to_i
     per_page = (params[:per_page] || 25).to_i
-    @people  = @people.order(updated_at: :desc).offset((page - 1) * per_page).limit(per_page)
+    @people  = @people.order(last_name: :asc).offset((page - 1) * per_page).limit(per_page)
 
     serialized = @people.includes(:active_invitation).map { |p| PersonSerializer.new(p).serializable_hash[:data][:attributes] }
     render_success(data: { people: serialized }, message: 'People found.')
