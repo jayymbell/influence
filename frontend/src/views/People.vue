@@ -45,12 +45,12 @@
             <div v-if="p.email" class="text-body-2 text-medium-emphasis">{{ p.email }}</div>
             <div class="mt-1">
               <v-chip
-                v-if="!p.user_id"
+                v-if="p.client_id && !p.user_id"
                 size="x-small"
-                color="default"
+                color="secondary"
                 variant="outlined"
                 class="mr-1"
-              >No User</v-chip>
+              >client</v-chip>
               <v-chip
                 v-for="role in (p.user && p.user.roles || [])"
                 :key="role"
@@ -67,6 +67,11 @@
               variant="text" size="small" color="secondary"
               @click="openClientDialog(p)"
             >Client</v-btn>
+            <v-btn
+              v-if="p.user_id && !(p.user && p.user.roles && (p.user.roles.includes('staff') || p.user.roles.includes('client'))) && !p.discarded_at"
+              variant="text" size="small" color="purple"
+              @click="assignStaff(p)"
+            >Staff</v-btn>
             <v-btn
               v-if="p.email && !p.user_id && !p.invitation_pending && !p.discarded_at"
               variant="text" size="small" color="primary"
@@ -115,12 +120,32 @@
             v-model="clientForm.organization_name"
             label="Client / Organization Name *"
             autofocus
+            @update:model-value="debouncedClientSearch"
           />
+          <div v-if="clientSuggestions.length" class="mb-2">
+            <p class="text-body-2 text-warning mb-2">
+              Similar clients already exist — select one to avoid duplicates:
+            </p>
+            <v-chip
+              v-for="c in clientSuggestions"
+              :key="c.id"
+              class="mr-1 mb-1"
+              color="warning"
+              variant="outlined"
+              clickable
+              @click="selectClientSuggestion(c)"
+            >
+              {{ c.display_name }}
+              <span v-if="c.legal_name !== c.display_name" class="text-medium-emphasis ml-1">({{ c.legal_name }})</span>
+            </v-chip>
+          </div>
         </v-card-text>
         <v-card-actions class="px-6 pb-5">
           <v-spacer />
           <v-btn variant="text" @click="clientDialogOpen = false">Cancel</v-btn>
-          <v-btn color="primary" @click="addClient">Confirm</v-btn>
+          <v-btn v-if="forceCreate" color="warning" @click="addClient">Create New Anyway</v-btn>
+          <v-btn v-else-if="selectedExistingClient" color="primary" @click="addClient">Add to Existing Client</v-btn>
+          <v-btn v-else color="primary" @click="addClient">Confirm</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -159,6 +184,9 @@ const clientDialogOpen = ref(false)
 const editTarget = ref(null)
 const clientTarget = ref(null)
 const clientForm = ref({ organization_name: '' })
+const clientSuggestions = ref([])
+const forceCreate = ref(false)
+const selectedExistingClient = ref(false)
 const showSnackbar = inject('showSnackbar')
 
 const blankForm = () => ({
@@ -327,19 +355,74 @@ const canAddAsClient = (p) => {
   return false
 }
 
+const searchClientSuggestions = async (query) => {
+  if (!query || query.trim().length < 2) {
+    clientSuggestions.value = []
+    return
+  }
+  try {
+    const response = await api.get('/clients/similar', { params: { query } })
+    const q = query.trim().toLowerCase()
+    clientSuggestions.value = (response.data.clients || []).filter(c =>
+      c.display_name.toLowerCase() !== q && c.legal_name.toLowerCase() !== q
+    )
+  } catch {
+    clientSuggestions.value = []
+  }
+}
+
+const debouncedClientSearch = debounce((val) => {
+  forceCreate.value = false
+  selectedExistingClient.value = false
+  searchClientSuggestions(val)
+}, 300)
+
+const selectClientSuggestion = (c) => {
+  clientForm.value.organization_name = c.display_name
+  clientSuggestions.value = []
+  forceCreate.value = false
+  selectedExistingClient.value = true
+}
+
 const openClientDialog = (p) => {
   clientTarget.value = p
   clientForm.value = { organization_name: p.organization_name || '' }
+  clientSuggestions.value = []
+  forceCreate.value = false
+  selectedExistingClient.value = false
   clientDialogOpen.value = true
 }
 
 const addClient = async () => {
+  // Always re-check at submit time in case debounce hasn't fired yet
+  if (!forceCreate.value) {
+    await searchClientSuggestions(clientForm.value.organization_name)
+    if (clientSuggestions.value.length) {
+      forceCreate.value = true
+      return
+    }
+  }
   try {
     const response = await api.post(`/people/${clientTarget.value.id}/add_client`, clientForm.value)
     trackEvent('added client', { person_id: clientTarget.value.id })
     showSnackbar([response.data.message || 'Person added as client contact'], 'success')
     clientDialogOpen.value = false
     clientTarget.value = null
+    clientSuggestions.value = []
+    forceCreate.value = false
+    selectedExistingClient.value = false
+    fetchPeople(searchQuery.value)
+  } catch (error) {
+    const e = error.response?.data?.errors || ['An unknown error occurred']
+    showSnackbar(e, 'error')
+  }
+}
+
+const assignStaff = async (p) => {
+  try {
+    await api.post(`/people/${p.id}/assign_staff`)
+    trackEvent('assigned staff role', { person_id: p.id })
+    showSnackbar(['Staff role assigned'], 'success')
     fetchPeople(searchQuery.value)
   } catch (error) {
     const e = error.response?.data?.errors || ['An unknown error occurred']
@@ -376,6 +459,13 @@ defineExpose({
   clientDialogOpen,
   clientTarget,
   clientForm,
-  addClient
+  addClient,
+  assignStaff,
+  clientSuggestions,
+  forceCreate,
+  selectedExistingClient,
+  searchClientSuggestions,
+  debouncedClientSearch,
+  selectClientSuggestion
 })
 </script>

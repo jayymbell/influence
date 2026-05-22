@@ -27,6 +27,34 @@ class ClientsController < ApplicationController
     render_success(data: { clients: serialized }, message: 'Clients found.')
   end
 
+  # GET /clients/similar?query=...
+  # Returns active clients whose name is similar to the query (trigram similarity >= 0.15),
+  # excluding exact matches so the caller can surface duplicate warnings.
+  def similar
+    authorize Client, :index?
+
+    query = params[:query].to_s.strip
+    return render_success(data: { clients: [] }, message: 'No query.') if query.length < 2
+
+    order_sql = Arel.sql(
+      Client.sanitize_sql_array([
+        'GREATEST(similarity(lower(legal_name), lower(?)), similarity(lower(display_name), lower(?))) DESC',
+        query, query
+      ])
+    )
+
+    @clients = Client.kept
+                     .where(
+                       'similarity(lower(legal_name), lower(:q)) >= 0.15 OR similarity(lower(display_name), lower(:q)) >= 0.15',
+                       q: query
+                     )
+                     .order(order_sql)
+                     .limit(5)
+
+    serialized = @clients.map { |c| ClientSerializer.new(c).serializable_hash[:data][:attributes] }
+    render_success(data: { clients: serialized }, message: 'Similar clients found.')
+  end
+
   # GET /clients/:id
   def show
     authorize @client

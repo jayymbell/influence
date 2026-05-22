@@ -35,6 +35,10 @@ class PersonPolicy < ApplicationPolicy
     admin_or_staff?
   end
 
+  def assign_staff?
+    user.admin?
+  end
+
   class Scope < ApplicationPolicy::Scope
     def resolve
       if user.admin? || user.staff?

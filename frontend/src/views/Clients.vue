@@ -59,12 +59,31 @@
         <v-card-text class="px-6">
           <v-row>
             <v-col cols="12">
-              <v-text-field v-model="form.legal_name" label="Legal Name *" />
+              <v-text-field
+                v-model="form.legal_name"
+                label="Legal Name *"
+                @update:model-value="!editTarget && debouncedSimilarSearch($event)"
+              />
             </v-col>
             <v-col cols="12">
               <v-text-field v-model="form.display_name" label="Display Name *" />
             </v-col>
           </v-row>
+          <div v-if="!editTarget && similarSuggestions.length" class="mb-2">
+            <p class="text-body-2 text-warning mb-2">
+              Similar clients already exist — are you sure you want to create a new one?
+            </p>
+            <v-chip
+              v-for="c in similarSuggestions"
+              :key="c.id"
+              class="mr-1 mb-1"
+              color="warning"
+              variant="outlined"
+            >
+              {{ c.display_name }}
+              <span v-if="c.legal_name !== c.display_name" class="text-medium-emphasis ml-1">({{ c.legal_name }})</span>
+            </v-chip>
+          </div>
           <p class="text-body-2 text-medium-emphasis mt-1">* Required</p>
         </v-card-text>
         <v-card-actions class="px-6 pb-5">
@@ -72,7 +91,8 @@
           <v-btn v-if="editTarget && editTarget.status === 'active'" color="error" variant="text" @click="openDeleteDialog">Deactivate</v-btn>
           <v-spacer />
           <v-btn variant="text" @click="closeDialog">Cancel</v-btn>
-          <v-btn color="primary" @click="editTarget ? updateClient() : createClient()">Save</v-btn>
+          <v-btn v-if="!editTarget && forceCreate" color="warning" @click="createClient(true)">Create Anyway</v-btn>
+          <v-btn v-else color="primary" @click="editTarget ? updateClient() : createClient()">Save</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -107,6 +127,8 @@ const showActive = ref(true)
 const dialogOpen = ref(false)
 const deleteDialogOpen = ref(false)
 const editTarget = ref(null)
+const similarSuggestions = ref([])
+const forceCreate = ref(false)
 const showSnackbar = inject('showSnackbar')
 
 const blankForm = () => ({ legal_name: '', display_name: '' })
@@ -145,6 +167,8 @@ const onClearSearch = () => {
 const openCreateDialog = () => {
   editTarget.value = null
   form.value = blankForm()
+  similarSuggestions.value = []
+  forceCreate.value = false
   dialogOpen.value = true
 }
 
@@ -164,13 +188,43 @@ const closeDialog = () => {
   dialogOpen.value = false
   editTarget.value = null
   form.value = blankForm()
+  similarSuggestions.value = []
+  forceCreate.value = false
 }
 
 const openDeleteDialog = () => {
   deleteDialogOpen.value = true
 }
 
-const createClient = async () => {
+const searchSimilar = async (query) => {
+  if (!query || query.trim().length < 2) {
+    similarSuggestions.value = []
+    return
+  }
+  try {
+    const response = await api.get('/clients/similar', { params: { query } })
+    const q = query.trim().toLowerCase()
+    similarSuggestions.value = (response.data.clients || []).filter(c =>
+      c.display_name.toLowerCase() !== q && c.legal_name.toLowerCase() !== q
+    )
+  } catch {
+    similarSuggestions.value = []
+  }
+}
+
+const debouncedSimilarSearch = debounce((val) => {
+  forceCreate.value = false
+  searchSimilar(val)
+}, 300)
+
+const createClient = async (force = false) => {
+  if (!force) {
+    await searchSimilar(form.value.legal_name)
+    if (similarSuggestions.value.length) {
+      forceCreate.value = true
+      return
+    }
+  }
   try {
     const response = await api.post('/clients', { client: form.value })
     trackEvent('created client', { client_id: response.data.client.id })
@@ -229,6 +283,7 @@ defineExpose({
   clients, loading, searchQuery, showActive, dialogOpen, deleteDialogOpen,
   editTarget, form, fetchClients, debouncedSearch, onClearSearch,
   openCreateDialog, openEditDialog, closeDialog, openDeleteDialog,
-  createClient, updateClient, deleteClient, reactivateClient
+  createClient, updateClient, deleteClient, reactivateClient,
+  similarSuggestions, forceCreate, searchSimilar, debouncedSimilarSearch
 })
 </script>

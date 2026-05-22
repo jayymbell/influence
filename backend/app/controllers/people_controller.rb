@@ -1,6 +1,6 @@
 class PeopleController < ApplicationController
   before_action :authenticate_user!
-  before_action :set_person, only: %i[show update destroy invite reactivate revoke_invitation add_client]
+  before_action :set_person, only: %i[show update destroy invite reactivate revoke_invitation add_client assign_staff]
 
   # GET /people
   def index
@@ -116,7 +116,7 @@ class PeopleController < ApplicationController
       end
     end
 
-    @person.update!(client: client, updated_by: current_user)
+    @person.update!(client: client, organization_name: client.display_name, updated_by: current_user)
 
     client_role = Role.find_by!(name: 'client')
 
@@ -134,6 +134,23 @@ class PeopleController < ApplicationController
     else
       render_success(data: { person: person_data(@person) }, message: 'Person added as client contact.')
     end
+  end
+
+  # POST /people/:id/assign_staff
+  def assign_staff
+    authorize @person, :assign_staff?
+
+    unless @person.user.present?
+      return render_error(errors: ['Person has no user account'], message: 'Cannot assign role.')
+    end
+
+    staff_role = Role.find_by!(name: 'staff')
+    if @person.user.roles.exists?(name: 'staff')
+      return render_error(errors: ['Person already has the staff role'], message: 'Role already assigned.')
+    end
+
+    @person.user.roles << staff_role
+    render_success(data: { person: person_data(@person) }, message: 'Staff role assigned.')
   end
 
   # DELETE /people/:id/invitation

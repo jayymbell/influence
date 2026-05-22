@@ -23,11 +23,15 @@ Rails.application.routes.draw do
       post   :invite
       post   :reactivate
       post   :add_client
+      post   :assign_staff
       delete :invitation, action: :revoke_invitation
     end
   end
 
   resources :clients, only: [:index, :show, :create, :update, :destroy] do
+    collection do
+      get :similar
+    end
     member do
       post :reactivate
     end
