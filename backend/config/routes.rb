@@ -54,6 +54,14 @@ Rails.application.routes.draw do
   end
 
   resources :bills, only: [:index, :show, :create, :update, :destroy] do
+    collection do
+      get  :search
+      post :import
+    end
+    member do
+      patch :link_external
+      post  :refresh
+    end
     resources :issues,  only: [:index, :create, :destroy], controller: 'bill_issues'
     resources :clients, only: [:index, :create, :destroy], controller: 'bill_clients'
     resources :people,  only: [:index, :create, :destroy], controller: 'bill_people'

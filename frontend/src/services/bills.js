@@ -72,6 +72,23 @@ const billsApi = {
   unlinkBillFromIssue(issueId, billId) {
     return api.delete(`/issues/${issueId}/bills/${billId}`)
   },
+
+  // Open States integration
+  search(q, params = {}) {
+    return api.get('/bills/search', { params: { q, ...params } })
+  },
+
+  importBill(externalId) {
+    return api.post('/bills/import', { external_id: externalId })
+  },
+
+  linkExternal(id, externalId) {
+    return api.patch(`/bills/${id}/link_external`, { external_id: externalId })
+  },
+
+  refresh(id) {
+    return api.post(`/bills/${id}/refresh`)
+  },
 }
 
 export default billsApi

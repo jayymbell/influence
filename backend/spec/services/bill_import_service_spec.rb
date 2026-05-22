@@ -1,0 +1,380 @@
+require 'rails_helper'
+
+RSpec.describe BillImportService do
+  # Stub the API key so tests never need a real key
+  before do
+    stub_const("BillImportService::API_KEY", "test-api-key")
+  end
+
+  let(:base_url)     { "https://v3.openstates.org" }
+  let(:revisor_base) { "https://www.revisor.mn.gov" }
+
+  REVISOR_HTML_WITH_DESC = <<~HTML
+    <html><body>
+      <h2>Description</h2>
+      <p>This is the Revisor description.</p>
+    </body></html>
+  HTML
+
+  REVISOR_HTML_NO_DESC = <<~HTML
+    <html><body><h2>Actions</h2><p>Referred to committee.</p></body></html>
+  HTML
+
+  def stub_revisor(identifier: "HF 100", session: "2025-2026", body: REVISOR_HTML_WITH_DESC, status: 200)
+    stub_request(:get, /revisor\.mn\.gov\/bills/)
+      .to_return(status: status, body: body, headers: { "Content-Type" => "text/html" })
+  end
+
+  def stub_open_states_search(query:, status: 200, body: nil)
+    body ||= {
+      "results" => [
+        {
+          "id"            => "ocd-bill/1",
+          "identifier"    => "HF 100",
+          "title"         => "A test bill",
+          "openstates_url" => "https://openstates.org/mn/bills/2026/HF100/",
+          "session"    => "2026",
+          "from_organization" => { "classification" => "lower" }
+        },
+        {
+          "id"            => "ocd-bill/2",
+          "identifier"    => "SF 200",
+          "title"         => "Another bill",
+          "openstates_url" => "https://openstates.org/mn/bills/2026/SF200/",
+          "session"    => "2025-2026",
+          "from_organization" => { "classification" => "upper" }
+        }
+      ],
+      "pagination" => { "total_items" => 2 }
+    }
+    stub_request(:get, "#{base_url}/bills")
+      .with(query: hash_including("jurisdiction" => "mn", "q" => query))
+      .to_return(status: status, body: body.to_json, headers: { "Content-Type" => "application/json" })
+  end
+
+  def stub_open_states_fetch(external_id:, status: 200, body: nil)
+    body ||= {
+      "id"            => external_id,
+      "identifier"    => "HF 100",
+      "title"         => "A test bill",
+      "openstates_url" => "https://openstates.org/mn/bills/2026/HF100/",
+      "session"    => "2026",
+      "from_organization" => { "classification" => "lower" },
+      "subject"    => ["Education", "Finance"],
+      "abstracts" => [ { "abstract" => "This bill does something important.", "note" => "summary" } ]
+    }
+    escaped = CGI.escape(external_id)
+    stub_request(:get, Regexp.new("v3\\.openstates\\.org/bills/#{Regexp.escape(escaped)}"))
+      .to_return(status: status, body: body.to_json, headers: { "Content-Type" => "application/json" })
+  end
+
+  # -------------------------------------------------------------------------
+  describe ".search" do
+    it "returns normalized results with already_imported flag" do
+      create(:bill, external_id: "ocd-bill/1")
+      stub_open_states_search(query: "test")
+
+      result = BillImportService.search(query: "test")
+
+      expect(result[:results].length).to eq 2
+      first = result[:results].find { |r| r[:external_id] == "ocd-bill/1" }
+      second = result[:results].find { |r| r[:external_id] == "ocd-bill/2" }
+
+      expect(first[:already_imported]).to be true
+      expect(second[:already_imported]).to be false
+    end
+
+    it "maps chamber lower→house and upper→senate" do
+      stub_open_states_search(query: "test")
+      results = BillImportService.search(query: "test")[:results]
+
+      house_result  = results.find { |r| r[:external_id] == "ocd-bill/1" }
+      senate_result = results.find { |r| r[:external_id] == "ocd-bill/2" }
+
+      expect(house_result[:chamber]).to eq "house"
+      expect(senate_result[:chamber]).to eq "senate"
+    end
+
+    it "extracts 4-digit session year from session identifier" do
+      stub_open_states_search(query: "test")
+      results = BillImportService.search(query: "test")[:results]
+      expect(results[0][:session_year]).to eq 2026
+      expect(results[1][:session_year]).to eq 2025
+    end
+
+    it "includes total from pagination" do
+      stub_open_states_search(query: "test")
+      result = BillImportService.search(query: "test")
+      expect(result[:total]).to eq 2
+    end
+
+    it "raises ExternalError on non-200 response" do
+      stub_open_states_search(query: "bad", status: 500)
+      expect {
+        BillImportService.search(query: "bad")
+      }.to raise_error(BillImportService::ExternalError, /500/)
+    end
+
+    it "raises ExternalError on timeout" do
+      stub_request(:get, /v3\.openstates\.org\/bills/).to_timeout
+      expect {
+        BillImportService.search(query: "timeout")
+      }.to raise_error(BillImportService::ExternalError, /timed out/i)
+    end
+  end
+
+  # -------------------------------------------------------------------------
+  describe ".fetch" do
+    it "returns normalized bill attributes" do
+      stub_open_states_fetch(external_id: "ocd-bill/1")
+      attrs = BillImportService.fetch(external_id: "ocd-bill/1")
+
+      expect(attrs[:bill_number]).to eq "HF 100"
+      expect(attrs[:title]).to eq "A test bill"
+      expect(attrs[:description]).to eq "This bill does something important."
+      expect(attrs[:chamber]).to eq "house"
+      expect(attrs[:session_year]).to eq 2026
+      expect(attrs[:source_url]).to include("openstates.org")
+    end
+
+    it "falls back to Revisor scraper when abstracts is empty" do
+      stub_revisor
+      stub_open_states_fetch(
+        external_id: "ocd-bill/1",
+        body: {
+          "id"             => "ocd-bill/1",
+          "identifier"     => "HF 100",
+          "title"          => "A test bill",
+          "openstates_url" => "https://openstates.org/mn/bills/2026/HF100/",
+          "from_organization" => { "classification" => "lower" },
+          "session"        => "2026",
+          "subject"        => ["Environment", "Commerce"],
+          "abstracts"      => []
+        }
+      )
+      attrs = BillImportService.fetch(external_id: "ocd-bill/1")
+      expect(attrs[:description]).to eq "This is the Revisor description."
+    end
+
+    it "sets description to nil when abstracts is empty and Revisor scrape also fails" do
+      stub_revisor(status: 500)
+      stub_open_states_fetch(
+        external_id: "ocd-bill/1",
+        body: {
+          "id"             => "ocd-bill/1",
+          "identifier"     => "HF 100",
+          "title"          => "A test bill",
+          "openstates_url" => "https://openstates.org/mn/bills/2026/HF100/",
+          "from_organization" => { "classification" => "lower" },
+          "session"        => "2026",
+          "subject"        => [],
+          "abstracts"      => []
+        }
+      )
+      attrs = BillImportService.fetch(external_id: "ocd-bill/1")
+      expect(attrs[:description]).to be_nil
+    end
+
+    it "raises ExternalError on 404" do
+      stub_open_states_fetch(external_id: "ocd-bill/missing", status: 404)
+      expect {
+        BillImportService.fetch(external_id: "ocd-bill/missing")
+      }.to raise_error(BillImportService::ExternalError, /404/)
+    end
+  end
+
+  # -------------------------------------------------------------------------
+  describe ".import" do
+    let(:user) { create(:user, :admin) }
+
+    it "creates a new local Bill from Open States data" do
+      stub_open_states_fetch(external_id: "ocd-bill/1")
+
+      bill, status_sym = BillImportService.import(external_id: "ocd-bill/1", created_by: user)
+
+      expect(status_sym).to eq :created
+      expect(bill).to be_persisted
+      expect(bill.external_id).to eq "ocd-bill/1"
+      expect(bill.bill_number).to eq "HF 100"
+      expect(bill.title).to eq "A test bill"
+      expect(bill.description).to eq "This bill does something important."
+      expect(bill.chamber).to eq "house"
+      expect(bill.session_year).to eq 2026
+      expect(bill.status).to eq "introduced"
+      expect(bill.last_synced_at).not_to be_nil
+      expect(bill.created_by).to eq user
+    end
+
+    it "returns existing bill without calling Open States if external_id already exists" do
+      existing = create(:bill, external_id: "ocd-bill/1")
+
+      bill, status_sym = BillImportService.import(external_id: "ocd-bill/1", created_by: user)
+
+      expect(status_sym).to eq :existing
+      expect(bill.id).to eq existing.id
+      expect(WebMock).not_to have_requested(:get, /openstates/)
+    end
+
+    it "does not overwrite notes, tags, or status on import" do
+      stub_open_states_fetch(external_id: "ocd-bill/new")
+
+      bill, _ = BillImportService.import(external_id: "ocd-bill/new", created_by: user)
+
+      expect(bill.notes).to be_nil
+      expect(bill.tags).to eq []
+      expect(bill.status).to eq "introduced"
+    end
+  end
+
+  # -------------------------------------------------------------------------
+  describe ".refresh" do
+    let(:bill) { create(:bill, external_id: "ocd-bill/1", description: "old description", notes: "kept", tags: ["kept"], status: :signed) }
+
+    it "updates mapped fields from Open States" do
+      stub_open_states_fetch(
+        external_id: "ocd-bill/1",
+        body: {
+          "id"            => "ocd-bill/1",
+          "identifier"    => "HF 101",
+          "title"         => "Updated Title",
+          "openstates_url" => "https://openstates.org/mn/bills/2026/HF101/",
+          "session"    => "2026",
+          "from_organization" => { "classification" => "upper" },
+          "subject"    => ["Education"],
+          "abstracts" => [ { "abstract" => "Refreshed description.", "note" => "summary" } ]
+        }
+      )
+
+      refreshed = BillImportService.refresh(bill: bill)
+
+      expect(refreshed.bill_number).to eq "HF 101"
+      expect(refreshed.title).to eq "Updated Title"
+      expect(refreshed.description).to eq "Refreshed description."
+      expect(refreshed.chamber).to eq "senate"
+      expect(refreshed.last_synced_at).not_to be_nil
+    end
+
+    it "does NOT overwrite notes, tags, status, or companion_bill_id" do
+      stub_open_states_fetch(external_id: "ocd-bill/1")
+
+      refreshed = BillImportService.refresh(bill: bill)
+
+      expect(refreshed.notes).to eq "kept"
+      expect(refreshed.tags).to eq ["kept"]
+      expect(refreshed.status).to eq "signed"
+    end
+
+    it "raises ExternalError if bill has no external_id" do
+      unlinked_bill = create(:bill)
+      expect {
+        BillImportService.refresh(bill: unlinked_bill)
+      }.to raise_error(BillImportService::ExternalError, /not linked/)
+    end
+  end
+
+  # -------------------------------------------------------------------------
+  describe ".link" do
+    let(:bill) { create(:bill) }
+    let(:user) { create(:user, :admin) }
+
+    it "sets external_id, source_url, and last_synced_at on the bill" do
+      stub_open_states_fetch(external_id: "ocd-bill/1")
+
+      linked = BillImportService.link(bill: bill, external_id: "ocd-bill/1")
+
+      expect(linked.external_id).to eq "ocd-bill/1"
+      expect(linked.source_url).to include("openstates.org")
+      expect(linked.last_synced_at).not_to be_nil
+    end
+
+    it "raises ExternalError if the external_id is already used by another bill" do
+      other = create(:bill, external_id: "ocd-bill/1")
+
+      expect {
+        BillImportService.link(bill: bill, external_id: "ocd-bill/1")
+      }.to raise_error(BillImportService::ExternalError, /already linked/)
+    end
+
+    it "allows re-linking a bill to the same external_id it already has" do
+      bill.update!(external_id: "ocd-bill/1")
+      stub_open_states_fetch(external_id: "ocd-bill/1")
+
+      expect {
+        BillImportService.link(bill: bill, external_id: "ocd-bill/1")
+      }.not_to raise_error
+    end
+
+    it "raises ExternalError when Open States returns non-200" do
+      stub_open_states_fetch(external_id: "ocd-bill/bad", status: 404)
+      expect {
+        BillImportService.link(bill: bill, external_id: "ocd-bill/bad")
+      }.to raise_error(BillImportService::ExternalError, /404/)
+    end
+  end
+
+  # -------------------------------------------------------------------------
+  describe ".scrape_revisor_description" do
+    it "returns the paragraph text after an h2 Description heading" do
+      stub_request(:get, /revisor\.mn\.gov\/bills/)
+        .to_return(status: 200, body: REVISOR_HTML_WITH_DESC, headers: { "Content-Type" => "text/html" })
+      result = BillImportService.scrape_revisor_description("HF 100", "2025-2026")
+      expect(result).to eq "This is the Revisor description."
+    end
+
+    it "returns nil when the page has no Description heading" do
+      stub_request(:get, /revisor\.mn\.gov\/bills/)
+        .to_return(status: 200, body: REVISOR_HTML_NO_DESC, headers: { "Content-Type" => "text/html" })
+      result = BillImportService.scrape_revisor_description("SF 200", "2025-2026")
+      expect(result).to be_nil
+    end
+
+    it "returns nil on non-200 response" do
+      stub_request(:get, /revisor\.mn\.gov\/bills/).to_return(status: 404, body: "")
+      expect(BillImportService.scrape_revisor_description("HF 100", "2025-2026")).to be_nil
+    end
+
+    it "returns nil on network timeout without raising" do
+      stub_request(:get, /revisor\.mn\.gov\/bills/).to_timeout
+      expect(BillImportService.scrape_revisor_description("HF 100", "2025-2026")).to be_nil
+    end
+
+    it "returns nil when identifier is blank" do
+      expect(BillImportService.scrape_revisor_description("", "2025-2026")).to be_nil
+    end
+
+    it "returns nil when identifier has no recognizable form" do
+      expect(BillImportService.scrape_revisor_description("not-a-bill", "2025-2026")).to be_nil
+    end
+
+    it "constructs a senate URL for SF bills" do
+      stub_request(:get, /revisor\.mn\.gov\/bills\/\d+\/\d+\/0\/SF\/\d+\/\?body=senate/)
+        .to_return(status: 200, body: REVISOR_HTML_WITH_DESC, headers: { "Content-Type" => "text/html" })
+      result = BillImportService.scrape_revisor_description("SF 5092", "2025-2026")
+      expect(result).to eq "This is the Revisor description."
+    end
+
+    it "constructs a house URL for HF bills" do
+      stub_request(:get, /revisor\.mn\.gov\/bills\/\d+\/\d+\/0\/HF\/\d+\/\?body=house/)
+        .to_return(status: 200, body: REVISOR_HTML_WITH_DESC, headers: { "Content-Type" => "text/html" })
+      result = BillImportService.scrape_revisor_description("HF 100", "2025-2026")
+      expect(result).to eq "This is the Revisor description."
+    end
+  end
+
+  # -------------------------------------------------------------------------
+  describe "miscellaneous error handling" do
+    it "raises ExternalError if API key is blank" do
+      stub_const("BillImportService::API_KEY", nil)
+      expect {
+        BillImportService.search(query: "any")
+      }.to raise_error(BillImportService::ExternalError, /not configured/)
+    end
+
+    it "raises ExternalError on invalid JSON response" do
+      stub_request(:get, /v3\.openstates\.org\/bills/).to_return(status: 200, body: "not json")
+      expect {
+        BillImportService.search(query: "any")
+      }.to raise_error(BillImportService::ExternalError, /Invalid response/)
+    end
+  end
+end

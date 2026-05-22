@@ -117,6 +117,34 @@ const useBillStore = defineStore('BillStore', () => {
     return response.data.bills
   }
 
+  const searchExternalBills = async (query, page = 1) => {
+    const response = await billsApi.search(query, { page })
+    return response.data
+  }
+
+  const importBill = async (externalId) => {
+    const response = await billsApi.importBill(externalId)
+    const bill = response.data.bill
+    if (!bills.value.find((b) => b.id === bill.id)) {
+      bills.value.unshift(bill)
+    }
+    return bill
+  }
+
+  const linkExternal = async (billId, externalId) => {
+    const response = await billsApi.linkExternal(billId, externalId)
+    const updated = response.data.bill
+    if (currentBill.value?.id === billId) currentBill.value = updated
+    return updated
+  }
+
+  const refreshBill = async (billId) => {
+    const response = await billsApi.refresh(billId)
+    const updated = response.data.bill
+    if (currentBill.value?.id === billId) currentBill.value = updated
+    return updated
+  }
+
   return {
     bills,
     currentBill,
@@ -136,6 +164,10 @@ const useBillStore = defineStore('BillStore', () => {
     fetchIssueBills,
     linkBillToIssue,
     unlinkBillFromIssue,
+    searchExternalBills,
+    importBill,
+    linkExternal,
+    refreshBill,
   }
 })
 

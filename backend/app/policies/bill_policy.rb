@@ -21,6 +21,22 @@ class BillPolicy < ApplicationPolicy
     admin_or_staff? || manager_on_bill?
   end
 
+  def search?
+    admin_or_staff? || user.manager?
+  end
+
+  def import?
+    admin_or_staff? || user.manager?
+  end
+
+  def link_external?
+    admin_or_staff? || manager_on_bill?
+  end
+
+  def refresh?
+    admin_or_staff? || manager_on_bill?
+  end
+
   class Scope < ApplicationPolicy::Scope
     def resolve
       if user.admin? || user.staff?

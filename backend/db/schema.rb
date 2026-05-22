@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_05_23_000400) do
+ActiveRecord::Schema[8.0].define(version: 2026_05_23_000500) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -109,7 +109,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_23_000400) do
     t.datetime "updated_at", null: false
     t.index ["chamber"], name: "index_bills_on_chamber"
     t.index ["companion_bill_id"], name: "index_bills_on_companion_bill_id"
-    t.index ["external_id"], name: "index_bills_on_external_id"
+    t.index ["external_id"], name: "index_bills_on_external_id_unique", unique: true, where: "(external_id IS NOT NULL)"
     t.index ["session_year"], name: "index_bills_on_session_year"
     t.index ["status"], name: "index_bills_on_status"
     t.index ["tags"], name: "index_bills_on_tags", using: :gin

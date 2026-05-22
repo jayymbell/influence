@@ -43,6 +43,9 @@
               class="mr-1"
             >{{ tag }}</v-chip>
           </div>
+          <div v-if="revisorUrl" class="mt-1 text-body-2">
+            <a :href="revisorUrl" target="_blank" rel="noopener noreferrer">MN Revisor ↗</a>
+          </div>
           <div v-if="bill.companion_bill" class="mt-1 text-body-2 text-medium-emphasis">
             Companion:
             <router-link :to="{ name: 'BillShow', params: { id: bill.companion_bill.id } }">
@@ -52,6 +55,29 @@
         </v-col>
         <v-col cols="auto">
           <v-btn variant="outlined" size="small" @click="openEditDialog">Edit</v-btn>
+          <v-btn
+            v-if="!bill.external_id"
+            variant="outlined"
+            size="small"
+            class="ml-2"
+            @click="linkModalOpen = true"
+          >Link to Open States</v-btn>
+          <template v-else>
+            <v-btn
+              variant="outlined"
+              size="small"
+              class="ml-2"
+              :loading="refreshing"
+              @click="doRefresh"
+            >Refresh</v-btn>
+            <v-tooltip :text="bill.last_synced_at">
+              <template #activator="{ props: tooltipProps }">
+                <span v-bind="tooltipProps" class="ml-2 text-caption text-medium-emphasis" style="cursor:default">
+                  Synced {{ relativeTime(bill.last_synced_at) }}
+                </span>
+              </template>
+            </v-tooltip>
+          </template>
         </v-col>
       </v-row>
 
@@ -266,14 +292,23 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Open States search/link modal -->
+    <BillSearchModal
+      v-model="linkModalOpen"
+      mode="link"
+      :bill-id="bill?.id"
+      @linked="onLinked"
+    />
   </v-container>
 </template>
 
 <script setup>
-import { onMounted, ref, inject } from 'vue'
+import { onMounted, ref, inject, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import billsApi from '../services/bills.js'
 import api from '../services/api.js'
+import BillSearchModal from '../components/BillSearchModal.vue'
 
 const route = useRoute()
 const showSnackbar = inject('showSnackbar')
@@ -282,6 +317,8 @@ const bill = ref(null)
 const loading = ref(false)
 const activeTab = ref('issues')
 const editDialogOpen = ref(false)
+const linkModalOpen  = ref(false)
+const refreshing     = ref(false)
 const issuesLoading = ref(false)
 const clientsLoading = ref(false)
 const peopleLoading = ref(false)
@@ -315,6 +352,19 @@ const statusColor = (status) => {
 }
 
 const chamberColor = (chamber) => chamber === 'house' ? 'blue-grey' : 'purple'
+
+const revisorUrl = computed(() => {
+  if (!bill.value?.bill_number || !bill.value?.session_year) return null
+  const m = bill.value.bill_number.trim().match(/^([A-Za-z]+)\s*(\d+)$/)
+  if (!m) return null
+  const type   = m[1].toUpperCase()
+  const number = m[2]
+  const year   = Number(bill.value.session_year)
+  const oddYear    = year % 2 === 0 ? year - 1 : year
+  const legislature = 94 - ((2025 - oddYear) / 2)
+  const body = bill.value.chamber === 'senate' ? 'senate' : 'house'
+  return `https://www.revisor.mn.gov/bills/${legislature}/${year}/0/${type}/${number}/?body=${body}`
+})
 
 const fetchBill = async () => {
   loading.value = true
@@ -482,6 +532,36 @@ const removePerson = async (personId) => {
   }
 }
 
+const doRefresh = async () => {
+  refreshing.value = true
+  try {
+    const response = await billsApi.refresh(bill.value.id)
+    bill.value = response.data.bill
+    showSnackbar(['Bill refreshed.'], 'success')
+  } catch (error) {
+    const e = error.response?.data?.errors || ['An unknown error occurred']
+    showSnackbar(e, 'error')
+  } finally {
+    refreshing.value = false
+  }
+}
+
+const onLinked = async () => {
+  await fetchBill()
+  showSnackbar(['Bill linked to Open States.'], 'success')
+}
+
+const relativeTime = (isoString) => {
+  if (!isoString) return ''
+  const diff = Date.now() - new Date(isoString).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  return `${Math.floor(hrs / 24)}d ago`
+}
+
 onMounted(async () => {
   await fetchBill()
   fetchAvailableIssues()
@@ -490,11 +570,12 @@ onMounted(async () => {
 })
 
 defineExpose({
-  bill, loading, activeTab, editDialogOpen, form,
+  bill, loading, activeTab, editDialogOpen, linkModalOpen, refreshing, form,
   selectedIssue, selectedClient, selectedPerson,
   availableIssueOptions, availableClientOptions, availablePeopleOptions,
   fetchBill, openEditDialog, saveEdit,
   linkIssue, unlinkIssue, linkClient, unlinkClient, addPerson, removePerson,
+  doRefresh, onLinked, relativeTime,
   statusColor, chamberColor, formatStatus,
 })
 </script>

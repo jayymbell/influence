@@ -16,6 +16,10 @@ jest.mock('../../src/services/bills', () => ({
   getIssueBills:       jest.fn(),
   linkBillToIssue:     jest.fn(),
   unlinkBillFromIssue: jest.fn(),
+  search:              jest.fn(),
+  importBill:          jest.fn(),
+  linkExternal:        jest.fn(),
+  refresh:             jest.fn(),
 }))
 
 const billsApi = require('../../src/services/bills')
@@ -263,6 +267,79 @@ describe('BillStore', () => {
 
       expect(billsApi.unlinkBillFromIssue).toHaveBeenCalledWith(10, 1)
       expect(result).toHaveLength(0)
+    })
+  })
+
+  describe('searchExternalBills', () => {
+    it('calls billsApi.search and returns response data', async () => {
+      const mockResults = [{ external_id: 'ocd-bill/1', title: 'Test', already_imported: false }]
+      billsApi.search.mockResolvedValue({ data: { results: mockResults } })
+      const store = useBillStore()
+
+      const data = await store.searchExternalBills('education', 1)
+
+      expect(billsApi.search).toHaveBeenCalledWith('education', { page: 1 })
+      expect(data.results).toHaveLength(1)
+    })
+
+    it('propagates errors', async () => {
+      billsApi.search.mockRejectedValue({ response: { data: { errors: ['Forbidden'] } } })
+      const store = useBillStore()
+
+      await expect(store.searchExternalBills('x')).rejects.toBeTruthy()
+    })
+  })
+
+  describe('importBill', () => {
+    it('prepends newly created bill and returns it', async () => {
+      const newBill = { ...mockBill, id: 99, title: 'Imported Bill' }
+      billsApi.importBill.mockResolvedValue({ data: { bill: newBill, imported: true } })
+      const store = useBillStore()
+      store.bills = [mockBill]
+
+      const result = await store.importBill('ocd-bill/99')
+
+      expect(billsApi.importBill).toHaveBeenCalledWith('ocd-bill/99')
+      expect(result.id).toBe(99)
+      expect(store.bills[0].id).toBe(99)
+    })
+
+    it('does not duplicate when bill already exists in state', async () => {
+      billsApi.importBill.mockResolvedValue({ data: { bill: mockBill, imported: false } })
+      const store = useBillStore()
+      store.bills = [mockBill] // already present
+
+      await store.importBill('ocd-bill/1')
+
+      expect(store.bills).toHaveLength(1) // not duplicated
+    })
+  })
+
+  describe('linkExternal', () => {
+    it('updates currentBill with linked bill', async () => {
+      const linked = { ...mockBill, external_id: 'ocd-bill/1' }
+      billsApi.linkExternal.mockResolvedValue({ data: { bill: linked } })
+      const store = useBillStore()
+      store.currentBill = { ...mockBill }
+
+      await store.linkExternal(1, 'ocd-bill/1')
+
+      expect(billsApi.linkExternal).toHaveBeenCalledWith(1, 'ocd-bill/1')
+      expect(store.currentBill.external_id).toBe('ocd-bill/1')
+    })
+  })
+
+  describe('refreshBill', () => {
+    it('updates currentBill with refreshed data', async () => {
+      const refreshed = { ...mockBill, title: 'Updated Title' }
+      billsApi.refresh.mockResolvedValue({ data: { bill: refreshed } })
+      const store = useBillStore()
+      store.currentBill = { ...mockBill }
+
+      await store.refreshBill(1)
+
+      expect(billsApi.refresh).toHaveBeenCalledWith(1)
+      expect(store.currentBill.title).toBe('Updated Title')
     })
   })
 })

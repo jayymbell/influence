@@ -2,7 +2,11 @@
 
 class BillsController < ApplicationController
   before_action :authenticate_user!
-  before_action :set_bill, only: %i[show update destroy]
+  before_action :set_bill, only: %i[show update destroy link_external refresh]
+
+  rescue_from BillImportService::ExternalError do |e|
+    render_error(errors: [ e.message ], message: "External service error.", status: :bad_gateway)
+  end
 
   # GET /bills
   def index
@@ -28,8 +32,11 @@ class BillsController < ApplicationController
 
     page     = (params[:page] || 1).to_i
     per_page = (params[:per_page] || 25).to_i
+    order_sql = Arel.sql(
+      "COALESCE(REGEXP_REPLACE(bill_number, '[^0-9]', '', 'g'), '')::bigint ASC, bill_number ASC"
+    )
     @bills   = @bills.includes(:bill_issues, :bill_clients, :bill_people)
-                     .order(title: :asc)
+                     .order(order_sql)
                      .offset((page - 1) * per_page)
                      .limit(per_page)
 
@@ -74,6 +81,62 @@ class BillsController < ApplicationController
     authorize @bill
     @bill.update!(status: :failed, updated_by: current_user)
     render_success(message: 'Bill deactivated.')
+  end
+
+  # GET /bills/search?q=...
+  def search
+    authorize Bill, :search?
+    query    = params[:q].to_s.strip
+    page     = (params[:page] || 1).to_i
+    per_page = (params[:per_page] || 20).to_i
+
+    if query.blank?
+      return render_error(errors: [ "q parameter is required" ], message: "Search query missing.")
+    end
+
+    result = BillImportService.search(query: query, page: page, per_page: per_page)
+    render_success(data: result, message: "Search results found.")
+  end
+
+  # POST /bills/import
+  def import
+    authorize Bill, :import?
+    external_id = params[:external_id].to_s.strip
+
+    if external_id.blank?
+      return render_error(errors: [ "external_id is required" ], message: "Import failed.")
+    end
+
+    bill, status_sym = BillImportService.import(external_id: external_id, created_by: current_user)
+    http_status = status_sym == :created ? :created : :ok
+    render_success(data: { bill: bill_data(bill) }, message: "Bill #{status_sym == :created ? 'imported' : 'already exists'}.", status: http_status)
+  end
+
+  # PATCH /bills/:id/link_external
+  def link_external
+    authorize @bill, :link_external?
+    external_id = params[:external_id].to_s.strip
+
+    if external_id.blank?
+      return render_error(errors: [ "external_id is required" ], message: "Link failed.")
+    end
+
+    bill = BillImportService.link(bill: @bill, external_id: external_id)
+    render_success(data: { bill: bill_data(bill) }, message: "Bill linked to external record.")
+  rescue BillImportService::ExternalError => e
+    render_error(errors: [ e.message ], message: "Link failed.", status: :unprocessable_content)
+  end
+
+  # POST /bills/:id/refresh
+  def refresh
+    authorize @bill, :refresh?
+
+    if @bill.external_id.blank?
+      return render_error(errors: [ "Bill is not linked to an external record" ], message: "Refresh failed.")
+    end
+
+    bill = BillImportService.refresh(bill: @bill)
+    render_success(data: { bill: bill_data(bill) }, message: "Bill refreshed.")
   end
 
   private
