@@ -14,6 +14,7 @@ class PeopleController < ApplicationController
     end
 
     @people = @people.where("lower(display_name) LIKE ?", "%#{params[:query].downcase}%") if params[:query].present?
+    @people = @people.where(client_id: params[:client_id]) if params[:client_id].present?
 
     page     = (params[:page] || 1).to_i
     per_page = (params[:per_page] || 25).to_i

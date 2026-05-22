@@ -44,6 +44,7 @@
             <v-chip v-if="c.status === 'inactive'" size="x-small" color="warning" variant="tonal" class="ml-2">Inactive</v-chip>
           </v-col>
           <v-col cols="auto">
+            <v-btn variant="text" size="small" :to="{ name: 'ClientShow', params: { id: c.id } }">View</v-btn>
             <v-btn variant="text" size="small" @click="openEditDialog(c)">Edit</v-btn>
           </v-col>
         </v-row>
