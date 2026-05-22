@@ -29,7 +29,9 @@
 </template>
 
 <script setup>
-defineProps({
+import { watch } from 'vue'
+
+const props = defineProps({
   form: {
     type: Object,
     required: true
@@ -43,4 +45,11 @@ defineProps({
     default: false
   }
 })
+
+watch(
+  [() => props.form.first_name, () => props.form.last_name],
+  ([first, last]) => {
+    props.form.display_name = [first, last].filter(Boolean).join(' ')
+  }
+)
 </script>
