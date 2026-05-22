@@ -124,18 +124,9 @@ class PeopleController < ApplicationController
 
     if @person.user.present?
       @person.user.roles << client_role unless @person.user.roles.exists?(name: 'client')
-      render_success(data: { person: person_data(@person) }, message: 'Person added as client contact.')
-    elsif @person.email.present?
-      if @person.active_invitation
-        render_success(data: { person: person_data(@person) }, message: 'Person added as client contact. Invitation already pending.')
-      else
-        raw_token = Invitation.generate_for(@person, invited_by: current_user)
-        InvitationsMailer.invite(@person.active_invitation, raw_token).deliver_later
-        render_success(data: { person: person_data(@person) }, message: 'Person added as client contact. Invitation sent.')
-      end
-    else
-      render_success(data: { person: person_data(@person) }, message: 'Person added as client contact.')
     end
+
+    render_success(data: { person: person_data(@person) }, message: 'Person added as client contact.')
   end
 
   # POST /people/:id/assign_staff

@@ -164,6 +164,21 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Invite after client dialog -->
+    <v-dialog v-model="inviteAfterClientDialogOpen" max-width="420">
+      <v-card>
+        <v-card-title class="pt-5 px-6">Invite as client user?</v-card-title>
+        <v-card-text class="px-6">
+          Would you like to send an invitation to <strong>{{ inviteAfterClientTarget?.display_name }}</strong> so they can log in?
+        </v-card-text>
+        <v-card-actions class="px-6 pb-5">
+          <v-spacer />
+          <v-btn variant="text" @click="inviteAfterClientDialogOpen = false">Not now</v-btn>
+          <v-btn color="primary" @click="inviteAfterClient">Send Invite</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
@@ -182,6 +197,8 @@ const showActive = ref(true)
 const dialogOpen = ref(false)
 const deleteDialogOpen = ref(false)
 const clientDialogOpen = ref(false)
+const inviteAfterClientDialogOpen = ref(false)
+const inviteAfterClientTarget = ref(null)
 const editTarget = ref(null)
 const clientTarget = ref(null)
 const clientForm = ref({ organization_name: '' })
@@ -409,11 +426,31 @@ const addClient = async () => {
     const response = await api.post(`/people/${clientTarget.value.id}/add_client`, clientForm.value)
     trackEvent('added client', { person_id: clientTarget.value.id })
     showSnackbar([response.data.message || 'Person added as client contact'], 'success')
+    const addedPerson = response.data.person
     clientDialogOpen.value = false
-    clientTarget.value = null
     clientSuggestions.value = []
     forceCreate.value = false
     selectedExistingClient.value = false
+    fetchPeople(searchQuery.value)
+    if (addedPerson?.email && !addedPerson?.user_id && !addedPerson?.invitation_pending) {
+      inviteAfterClientTarget.value = addedPerson
+      inviteAfterClientDialogOpen.value = true
+    }
+    clientTarget.value = null
+  } catch (error) {
+    const e = error.response?.data?.errors || ['An unknown error occurred']
+    showSnackbar(e, 'error')
+  }
+}
+
+const inviteAfterClient = async () => {
+  const p = inviteAfterClientTarget.value
+  inviteAfterClientDialogOpen.value = false
+  inviteAfterClientTarget.value = null
+  try {
+    await api.post(`/people/${p.id}/invite`)
+    trackEvent('invited person', { person_id: p.id })
+    showSnackbar(['Invitation sent'], 'success')
     fetchPeople(searchQuery.value)
   } catch (error) {
     const e = error.response?.data?.errors || ['An unknown error occurred']
