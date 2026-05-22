@@ -14,6 +14,8 @@ import Conversations from '../views/Conversations.vue'
 import People from '../views/People.vue'
 import Clients from '../views/Clients.vue'
 import ClientShow from '../views/ClientShow.vue'
+import Issues from '../views/Issues.vue'
+import IssueShow from '../views/IssueShow.vue'
 import AccountSetup from '../views/AccountSetup.vue'
 import InviteAccept from '../views/InviteAccept.vue'
 
@@ -157,6 +159,32 @@ const routes = [
     path: '/clients/:id',
     name: 'ClientShow',
     component: ClientShow,
+    beforeEnter: (to, from, next) => {
+      const userStore = useUserStore()
+      if (userStore.isLoggedIn && (userStore.hasRole('admin') || userStore.hasRole('staff') || userStore.hasRole('manager'))) {
+        next()
+      } else {
+        next({ name: 'Dashboard' })
+      }
+    }
+  },
+  {
+    path: '/issues',
+    name: 'Issues',
+    component: Issues,
+    beforeEnter: (to, from, next) => {
+      const userStore = useUserStore()
+      if (userStore.isLoggedIn && (userStore.hasRole('admin') || userStore.hasRole('staff') || userStore.hasRole('manager'))) {
+        next()
+      } else {
+        next({ name: 'Dashboard' })
+      }
+    }
+  },
+  {
+    path: '/issues/:id',
+    name: 'IssueShow',
+    component: IssueShow,
     beforeEnter: (to, from, next) => {
       const userStore = useUserStore()
       if (userStore.isLoggedIn && (userStore.hasRole('admin') || userStore.hasRole('staff') || userStore.hasRole('manager'))) {

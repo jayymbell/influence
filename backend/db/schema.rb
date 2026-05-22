@@ -58,6 +58,19 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_22_155142) do
     t.index ["visitor_token", "started_at"], name: "index_ahoy_visits_on_visitor_token_and_started_at"
   end
 
+  create_table "client_issues", force: :cascade do |t|
+    t.bigint "client_id", null: false
+    t.bigint "issue_id", null: false
+    t.boolean "is_primary", default: false, null: false
+    t.bigint "shared_by_id"
+    t.datetime "shared_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["client_id", "issue_id"], name: "index_client_issues_on_client_id_and_issue_id", unique: true
+    t.index ["client_id"], name: "index_client_issues_on_client_id"
+    t.index ["issue_id"], name: "index_client_issues_on_issue_id"
+  end
+
   create_table "client_staff", force: :cascade do |t|
     t.bigint "client_id", null: false
     t.bigint "user_id", null: false
@@ -105,6 +118,36 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_22_155142) do
     t.index ["created_by_id"], name: "index_invitations_on_created_by_id"
     t.index ["person_id"], name: "index_invitations_on_person_id"
     t.index ["token_digest"], name: "index_invitations_on_token_digest", unique: true
+  end
+
+  create_table "issue_people", force: :cascade do |t|
+    t.bigint "issue_id", null: false
+    t.bigint "person_id", null: false
+    t.bigint "added_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["issue_id", "person_id"], name: "index_issue_people_on_issue_id_and_person_id", unique: true
+    t.index ["issue_id"], name: "index_issue_people_on_issue_id"
+    t.index ["person_id"], name: "index_issue_people_on_person_id"
+  end
+
+  create_table "issues", force: :cascade do |t|
+    t.string "title", null: false
+    t.text "description"
+    t.text "notes"
+    t.string "tags", default: [], array: true
+    t.integer "status", default: 0, null: false
+    t.bigint "client_id", null: false
+    t.datetime "closed_at"
+    t.bigint "closed_by_id"
+    t.bigint "created_by_id"
+    t.bigint "updated_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["client_id", "status"], name: "index_issues_on_client_id_and_status"
+    t.index ["client_id"], name: "index_issues_on_client_id"
+    t.index ["status"], name: "index_issues_on_status"
+    t.index ["tags"], name: "index_issues_on_tags", using: :gin
   end
 
   create_table "messages", force: :cascade do |t|
@@ -196,6 +239,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_22_155142) do
     t.index ["system_user"], name: "index_users_on_system_user"
   end
 
+  add_foreign_key "client_issues", "clients"
+  add_foreign_key "client_issues", "issues"
+  add_foreign_key "client_issues", "users", column: "shared_by_id"
   add_foreign_key "client_staff", "clients"
   add_foreign_key "client_staff", "users"
   add_foreign_key "clients", "users", column: "created_by_id"
@@ -204,6 +250,13 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_22_155142) do
   add_foreign_key "conversations", "users"
   add_foreign_key "invitations", "people"
   add_foreign_key "invitations", "users", column: "created_by_id"
+  add_foreign_key "issue_people", "issues"
+  add_foreign_key "issue_people", "people"
+  add_foreign_key "issue_people", "users", column: "added_by_id"
+  add_foreign_key "issues", "clients"
+  add_foreign_key "issues", "users", column: "closed_by_id"
+  add_foreign_key "issues", "users", column: "created_by_id"
+  add_foreign_key "issues", "users", column: "updated_by_id"
   add_foreign_key "messages", "conversations"
   add_foreign_key "people", "clients"
   add_foreign_key "people", "users"

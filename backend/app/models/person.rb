@@ -7,6 +7,9 @@ class Person < ApplicationRecord
   has_many :invitations, dependent: :destroy
   has_one :active_invitation, -> { active }, class_name: 'Invitation'
 
+  has_many :issue_people, dependent: :destroy
+  has_many :issues, through: :issue_people
+
   belongs_to :created_by,     class_name: 'User', optional: true
   belongs_to :updated_by,     class_name: 'User', optional: true
   belongs_to :deactivated_by, class_name: 'User', optional: true

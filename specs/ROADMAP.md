@@ -38,14 +38,16 @@ The commercial core of the firm. Every engagement ties back to a client.
 - CRUD UI: list, create, view, edit, deactivate
 - Scope all downstream records (matters, contacts, activities) to a client
 
-### 1.2 Matter Management
-A *matter* represents a specific engagement or issue a client has hired the firm to work on.
+### 1.2 Issue Management
+An *issue* represents a specific policy matter or engagement that a client has hired the firm to work on.
 
-- `Matter` model: title, description, status (active/inactive/closed), client association, assigned lobbyists
-- Add `LegislativeSession` context from day one so matters are tied to a Minnesota session
-- Attach a matter to one or more clients
-- Status workflow: draft → active → closed
-- CRUD UI with client context
+- `Issue` model: title, description, notes, tags, status (active/inactive/closed), owning client, assigned people
+- Issues are owned by one primary client but can be shared with additional clients
+- Share/unshare workflow: managers and admins can link an issue to other clients; primary client cannot be removed
+- Status workflow: active → inactive → closed (with closed_at timestamp and audit trail)
+- People assignment: any person in the system can be added to or removed from an issue
+- CRUD UI with client context, status chips, tag display
+- Detail view with People and Shared Clients tabs
 
 ### 1.3 Contact Database
 Legislators, committee staff, agency officials, and coalition partners. The firm's most valuable institutional knowledge.
