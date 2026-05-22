@@ -7,8 +7,7 @@ class IssuePeopleController < ApplicationController
   # GET /issues/:issue_id/people
   def index
     authorize @issue, :show?
-    issue_people = @issue.issue_people.includes(:person)
-    render_success(data: { people: serialize_issue_people(issue_people) }, message: 'People found.')
+    render_success(data: { people: serialize_issue_people(ordered_issue_people(@issue)) }, message: 'People found.')
   end
 
   # POST /issues/:issue_id/people
@@ -20,7 +19,7 @@ class IssuePeopleController < ApplicationController
 
     if link.save
       render_success(
-        data: { people: serialize_issue_people(@issue.issue_people.includes(:person)) },
+        data: { people: serialize_issue_people(ordered_issue_people(@issue)) },
         message: 'Person added to issue.'
       )
     else
@@ -34,7 +33,7 @@ class IssuePeopleController < ApplicationController
     link = @issue.issue_people.find_by!(person_id: params[:id])
     link.destroy
     render_success(
-      data: { people: serialize_issue_people(@issue.issue_people.includes(:person)) },
+      data: { people: serialize_issue_people(ordered_issue_people(@issue)) },
       message: 'Person removed from issue.'
     )
   end
@@ -43,6 +42,10 @@ class IssuePeopleController < ApplicationController
 
   def set_issue
     @issue = Issue.find(params[:issue_id])
+  end
+
+  def ordered_issue_people(issue)
+    issue.issue_people.joins(:person).includes(:person).order('people.last_name ASC')
   end
 
   def serialize_issue_people(issue_people)

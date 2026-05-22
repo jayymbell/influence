@@ -20,7 +20,7 @@ class IssuesController < ApplicationController
     page     = (params[:page] || 1).to_i
     per_page = (params[:per_page] || 25).to_i
     @issues  = @issues.includes(:client, :client_issues, :issue_people)
-                      .order(updated_at: :desc)
+                      .order(title: :asc)
                       .offset((page - 1) * per_page)
                       .limit(per_page)
 
