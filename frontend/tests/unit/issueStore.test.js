@@ -26,7 +26,7 @@ const mockIssue = {
   tags: [],
   client: { id: 1, display_name: 'Acme' },
   people: [],
-  shared_clients: [],
+  clients: [],
 }
 
 beforeEach(() => {
@@ -139,15 +139,15 @@ describe('IssueStore', () => {
   })
 
   describe('shareWithClient', () => {
-    it('updates shared_clients on currentIssue', async () => {
-      const clients = [{ id: 2, display_name: 'Beta Corp', is_primary: false }]
+    it('updates clients on currentIssue', async () => {
+      const clients = [{ id: 2, display_name: 'Beta Corp' }]
       issuesApi.shareWithClient.mockResolvedValue({ data: { clients } })
       const store = useIssueStore()
       store.currentIssue = { ...mockIssue }
 
       await store.shareWithClient(1, 2)
 
-      expect(store.currentIssue.shared_clients).toEqual(clients)
+      expect(store.currentIssue.clients).toEqual(clients)
     })
   })
 

@@ -47,8 +47,8 @@ class IssuePolicy < ApplicationPolicy
         scope.all
       elsif user.manager?
         client_ids = ClientStaff.where(user_id: user.id).pluck(:client_id)
-        shared_issue_ids = ClientIssue.where(client_id: client_ids).pluck(:issue_id)
-        scope.where(client_id: client_ids).or(scope.where(id: shared_issue_ids))
+        issue_ids = ClientIssue.where(client_id: client_ids).pluck(:issue_id)
+        scope.where(id: issue_ids)
       else
         scope.none
       end
@@ -65,8 +65,6 @@ class IssuePolicy < ApplicationPolicy
     return false unless user.manager?
 
     client_ids = ClientStaff.where(user_id: user.id).pluck(:client_id)
-    return true if client_ids.include?(record.client_id)
-
     ClientIssue.where(issue_id: record.id, client_id: client_ids).exists?
   end
 end

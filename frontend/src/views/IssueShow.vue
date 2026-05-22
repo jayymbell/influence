@@ -75,7 +75,7 @@
       <!-- Tabs -->
       <v-tabs v-model="activeTab" class="mt-4">
         <v-tab value="people">People</v-tab>
-        <v-tab value="clients">Clients</v-tab>
+        <v-tab v-if="canViewClients" value="clients">Clients</v-tab>
       </v-tabs>
       <v-divider />
 
@@ -128,8 +128,8 @@
           </template>
         </v-window-item>
 
-        <!-- Shared Clients tab -->
-        <v-window-item value="clients">
+        <!-- Clients tab -->
+        <v-window-item v-if="canViewClients" value="clients">
           <v-row v-if="canShare" align="center" class="mb-2">
             <v-col cols="8">
               <v-autocomplete
@@ -158,15 +158,7 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-if="issue.client">
-                  <td>
-                    {{ issue.client.display_name }}
-                    <v-chip size="x-small" color="primary" variant="tonal" class="ml-1">primary</v-chip>
-                  </td>
-                  <td>—</td>
-                  <td></td>
-                </tr>
-                <tr v-for="c in issue.shared_clients" :key="c.id">
+                <tr v-for="c in issue.clients" :key="c.id">
                   <td>{{ c.display_name }}</td>
                   <td>{{ c.shared_at ? new Date(c.shared_at).toLocaleDateString() : '—' }}</td>
                   <td class="text-right">
@@ -176,7 +168,7 @@
                       size="small"
                       color="error"
                       @click="unshareFromClient(c.id)"
-                    >Unshare</v-btn>
+                    >Remove</v-btn>
                   </td>
                 </tr>
               </tbody>
@@ -254,6 +246,7 @@ const showSnackbar = inject('showSnackbar')
 const userStore = useUserStore()
 
 const canShare = userStore.hasRole('admin') || userStore.hasRole('manager')
+const canViewClients = userStore.hasRole('admin') || userStore.hasRole('staff') || userStore.hasRole('manager')
 
 const issue = ref(null)
 const loading = ref(false)
@@ -305,10 +298,9 @@ const fetchAvailablePeople = async () => {
 const fetchAvailableShareClients = async () => {
   try {
     const response = await api.get('/clients')
-    const linkedIds = (issue.value?.shared_clients || []).map((c) => c.id)
-    const primaryId = issue.value?.client?.id
+    const linkedIds = (issue.value?.clients || []).map((c) => c.id)
     availableShareClientOptions.value = (response.data.clients || [])
-      .filter((c) => !linkedIds.includes(c.id) && c.id !== primaryId)
+      .filter((c) => !linkedIds.includes(c.id))
       .map((c) => ({ title: c.display_name, value: c.id }))
   } catch (_) { /* silent */ }
 }
@@ -404,7 +396,7 @@ const shareWithClient = async () => {
   clientsLoading.value = true
   try {
     const response = await issuesApi.shareWithClient(issue.value.id, selectedShareClient.value)
-    issue.value.shared_clients = response.data.clients
+    issue.value.clients = response.data.clients
     selectedShareClient.value = null
     fetchAvailableShareClients()
     showSnackbar(['Issue shared with client.'], 'success')
@@ -420,7 +412,7 @@ const unshareFromClient = async (clientId) => {
   clientsLoading.value = true
   try {
     const response = await issuesApi.unshareFromClient(issue.value.id, clientId)
-    issue.value.shared_clients = response.data.clients
+    issue.value.clients = response.data.clients
     fetchAvailableShareClients()
     showSnackbar(['Issue unshared from client.'], 'success')
   } catch (error) {
@@ -441,6 +433,6 @@ defineExpose({
   issue, loading, activeTab, confirmClose, editDialogOpen, form,
   fetchIssue, openEditDialog, saveEdit, deactivate, closeIssue, reactivate,
   addPerson, removePerson, shareWithClient, unshareFromClient,
-  selectedPerson, selectedShareClient, canShare
+  selectedPerson, selectedShareClient, canShare, canViewClients
 })
 </script>

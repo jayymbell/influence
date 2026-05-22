@@ -5,7 +5,6 @@ FactoryBot.define do
     notes { nil }
     tags { [] }
     status { :active }
-    association :client
 
     trait :inactive do
       status { :inactive }

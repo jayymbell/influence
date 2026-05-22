@@ -47,7 +47,7 @@
         <v-row align="center">
           <v-col>
             <strong>{{ issue.title }}</strong>
-            <span v-if="issue.client" class="text-medium-emphasis ml-2 text-body-2">{{ issue.client.display_name }}</span>
+            <span v-if="issue.clients?.length" class="text-medium-emphasis ml-2 text-body-2">{{ issue.clients.map(c => c.display_name).join(', ') }}</span>
             <div class="mt-1">
               <v-chip
                 size="x-small"
@@ -99,15 +99,6 @@
                 hint="Type a tag and press Enter"
               />
             </v-col>
-            <v-col v-if="!editTarget" cols="12">
-              <v-select
-                v-model="form.client_id"
-                :items="clientOptions"
-                item-title="display_name"
-                item-value="id"
-                label="Client *"
-              />
-            </v-col>
           </v-row>
           <p class="text-body-2 text-medium-emphasis mt-1">* Required</p>
         </v-card-text>
@@ -125,7 +116,6 @@
 import { onMounted, ref, inject } from 'vue'
 import { debounce } from 'lodash'
 import issuesApi from '../services/issues.js'
-import api from '../services/api.js'
 
 const issues = ref([])
 const loading = ref(false)
@@ -133,12 +123,11 @@ const searchQuery = ref('')
 const statusFilter = ref(null)
 const dialogOpen = ref(false)
 const editTarget = ref(null)
-const clientOptions = ref([])
 const showSnackbar = inject('showSnackbar')
 
 const statusOptions = ['active', 'inactive', 'closed']
 
-const blankForm = () => ({ title: '', description: '', notes: '', tags: [], client_id: null })
+const blankForm = () => ({ title: '', description: '', notes: '', tags: [] })
 const form = ref(blankForm())
 
 const statusColor = (status) => {
@@ -171,19 +160,9 @@ const onClearSearch = () => {
   fetchIssues()
 }
 
-const fetchClients = async () => {
-  try {
-    const response = await api.get('/clients')
-    clientOptions.value = response.data.clients
-  } catch (_) {
-    // silently ignore — client picker just won't populate
-  }
-}
-
 const openCreateDialog = () => {
   editTarget.value = null
   form.value = blankForm()
-  fetchClients()
   dialogOpen.value = true
 }
 
@@ -240,7 +219,7 @@ onMounted(fetchIssues)
 
 defineExpose({
   issues, loading, searchQuery, statusFilter, dialogOpen, editTarget,
-  clientOptions, form, fetchIssues, debouncedSearch, onClearSearch,
+  form, fetchIssues, debouncedSearch, onClearSearch,
   openCreateDialog, openEditDialog, closeDialog, createIssue, updateIssue,
   statusColor
 })

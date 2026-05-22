@@ -17,10 +17,9 @@ class IssueClientsController < ApplicationController
     client = Client.find(params[:client_id])
 
     link = @issue.client_issues.build(
-      client:     client,
-      is_primary: false,
-      shared_by:  current_user,
-      shared_at:  Time.current
+      client:    client,
+      shared_by: current_user,
+      shared_at: Time.current
     )
 
     if link.save
@@ -35,10 +34,6 @@ class IssueClientsController < ApplicationController
   def destroy
     authorize @issue, :unshare?
     link = @issue.client_issues.find_by!(client_id: params[:id])
-
-    if link.is_primary?
-      return render_error(errors: ['Cannot remove the primary client from an issue.'], message: 'Unshare failed.', status: :unprocessable_entity)
-    end
 
     link.destroy
     client_issues = @issue.client_issues.includes(:client, :shared_by)
@@ -56,7 +51,6 @@ class IssueClientsController < ApplicationController
       {
         id:           ci.client.id,
         display_name: ci.client.display_name,
-        is_primary:   ci.is_primary,
         shared_at:    ci.shared_at,
         shared_by:    ci.shared_by ? { id: ci.shared_by.id, email: ci.shared_by.email } : nil
       }

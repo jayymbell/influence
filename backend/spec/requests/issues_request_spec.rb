@@ -30,8 +30,9 @@ RSpec.describe 'Issues API', type: :request do
       user    = create(:user, :with_role, role_name: 'manager')
       client  = create(:client)
       create(:client_staff, client: client, user: user)
-      create(:issue, client: client)
-      create(:issue) # different client — not visible
+      issue = create(:issue)
+      create(:client_issue, issue: issue, client: client)
+      create(:issue) # no client_issue for this manager — not visible
 
       get '/issues', headers: auth_headers_for(user)
 
@@ -64,8 +65,9 @@ RSpec.describe 'Issues API', type: :request do
     it 'filters by client_id' do
       user   = create(:user, :admin)
       client = create(:client)
-      create(:issue, client: client)
-      create(:issue) # different client
+      issue  = create(:issue)
+      create(:client_issue, issue: issue, client: client)
+      create(:issue) # unrelated
 
       get '/issues', params: { client_id: client.id }, headers: auth_headers_for(user)
 
@@ -271,7 +273,7 @@ RSpec.describe 'Issues API', type: :request do
       user   = create(:user, :admin)
       issue  = create(:issue)
       client = create(:client)
-      create(:client_issue, issue: issue, client: client, is_primary: false)
+      create(:client_issue, issue: issue, client: client)
 
       get "/issues/#{issue.id}/clients", headers: auth_headers_for(user)
 
@@ -325,7 +327,7 @@ RSpec.describe 'Issues API', type: :request do
       user   = create(:user, :admin)
       issue  = create(:issue)
       client = create(:client)
-      create(:client_issue, issue: issue, client: client, is_primary: false)
+      create(:client_issue, issue: issue, client: client)
 
       delete "/issues/#{issue.id}/clients/#{client.id}", headers: auth_headers_for(user)
 
@@ -333,21 +335,11 @@ RSpec.describe 'Issues API', type: :request do
       expect(issue.client_issues.where(client: client).count).to eq(0)
     end
 
-    it 'prevents removing the primary client link' do
-      user  = create(:user, :admin)
-      issue = create(:issue)
-      primary = create(:client_issue, issue: issue, client: issue.client, is_primary: true)
-
-      delete "/issues/#{issue.id}/clients/#{issue.client.id}", headers: auth_headers_for(user)
-
-      expect(response).to have_http_status(:unprocessable_entity)
-    end
-
     it 'returns 403 for staff' do
       user   = create(:user, :with_role, role_name: 'staff')
       issue  = create(:issue)
       client = create(:client)
-      create(:client_issue, issue: issue, client: client, is_primary: false)
+      create(:client_issue, issue: issue, client: client)
 
       delete "/issues/#{issue.id}/clients/#{client.id}", headers: auth_headers_for(user)
 
@@ -356,7 +348,7 @@ RSpec.describe 'Issues API', type: :request do
   end
 
   # ---------------------------------------------------------------------------
-  # POST /issues/:issue_id/people — add person
+  # POST /issues/:issue_id/people
   # ---------------------------------------------------------------------------
   describe 'POST /issues/:issue_id/people' do
     it 'adds a person to an issue' do

@@ -12,14 +12,6 @@ jest.mock('../../src/services/issues', () => ({
   update: jest.fn(),
 }))
 
-jest.mock('../../src/services/api', () => ({
-  get:      jest.fn(),
-  post:     jest.fn(),
-  patch:    jest.fn(),
-  delete:   jest.fn(),
-  defaults: { headers: { common: {} } }
-}))
-
 jest.mock('../../src/services/ahoy.js', () => ({ trackEvent: jest.fn() }))
 
 jest.mock('lodash', () => ({
@@ -30,9 +22,9 @@ jest.mock('lodash', () => ({
 const issuesApi = require('../../src/services/issues')
 
 const mockIssues = [
-  { id: 1, title: 'Budget Reform', status: 'active',   tags: ['healthcare'], client: { id: 1, display_name: 'Acme' } },
-  { id: 2, title: 'Transport Bill', status: 'inactive', tags: [],             client: { id: 2, display_name: 'Beta' } },
-  { id: 3, title: 'Closed Matter',  status: 'closed',   tags: ['energy'],    client: { id: 1, display_name: 'Acme' } },
+  { id: 1, title: 'Budget Reform', status: 'active',   tags: ['healthcare'], clients: [{ id: 1, display_name: 'Acme' }] },
+  { id: 2, title: 'Transport Bill', status: 'inactive', tags: [],             clients: [{ id: 2, display_name: 'Beta' }] },
+  { id: 3, title: 'Closed Matter',  status: 'closed',   tags: ['energy'],    clients: [{ id: 1, display_name: 'Acme' }] },
 ]
 
 const mountComponent = async () => {
@@ -132,10 +124,8 @@ describe('Issues.vue', () => {
 
   describe('create issue', () => {
     it('calls issuesApi.create and prepends to list on success', async () => {
-      const newIssue = { id: 4, title: 'New Issue', status: 'active', tags: [], client: { id: 1, display_name: 'Acme' } }
+      const newIssue = { id: 4, title: 'New Issue', status: 'active', tags: [], clients: [{ id: 1, display_name: 'Acme' }] }
       issuesApi.create.mockResolvedValue({ data: { issue: newIssue } })
-      const api = require('../../src/services/api')
-      api.get.mockResolvedValue({ data: { clients: [] } })
 
       const { wrapper, showSnackbar } = await mountComponent()
       await nextTick()
@@ -143,7 +133,6 @@ describe('Issues.vue', () => {
 
       // Call createIssue directly via internal ref
       wrapper.vm.form.title = 'New Issue'
-      wrapper.vm.form.client_id = 1
       await wrapper.vm.createIssue()
       await nextTick()
 
@@ -153,15 +142,12 @@ describe('Issues.vue', () => {
 
     it('shows error snackbar on create failure', async () => {
       issuesApi.create.mockRejectedValue({ response: { data: { errors: ['Title is blank'] } } })
-      const api = require('../../src/services/api')
-      api.get.mockResolvedValue({ data: { clients: [] } })
 
       const { wrapper, showSnackbar } = await mountComponent()
       await nextTick()
       await nextTick()
 
       wrapper.vm.form.title = ''
-      wrapper.vm.form.client_id = 1
       await wrapper.vm.createIssue()
       await nextTick()
 

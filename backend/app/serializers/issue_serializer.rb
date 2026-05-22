@@ -13,14 +13,8 @@ class IssueSerializer
              :created_at,
              :updated_at
 
-  attribute :client do |issue|
-    next nil unless issue.client
-
-    { id: issue.client.id, display_name: issue.client.display_name }
-  end
-
-  attribute :shared_clients do |issue|
-    issue.client_issues.includes(:client).map do |ci|
+  attribute :clients do |issue|
+    issue.client_issues.includes(:client, :shared_by).map do |ci|
       {
         id:           ci.client.id,
         display_name: ci.client.display_name,

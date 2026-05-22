@@ -6,7 +6,7 @@ RSpec.describe IssuePolicy do
   subject { described_class }
 
   let(:client) { create(:client) }
-  let(:issue)  { create(:issue, client: client) }
+  let(:issue)  { create(:issue) }
 
   context 'for admin users' do
     let(:user) { create(:user, :admin) }
@@ -57,7 +57,10 @@ RSpec.describe IssuePolicy do
   context 'for manager users on their own clients' do
     let(:user) { create(:user, :with_role, role_name: 'manager') }
 
-    before { create(:client_staff, client: client, user: user) }
+    before do
+      create(:client_staff, client: client, user: user)
+      create(:client_issue, issue: issue, client: client)
+    end
 
     it 'allows index'      do expect(subject.new(user, Issue).index?).to be true end
     it 'allows show'       do expect(subject.new(user, issue).show?).to be true end
@@ -73,7 +76,8 @@ RSpec.describe IssuePolicy do
     describe 'Scope' do
       it 'returns issues for their clients' do
         other_client = create(:client)
-        create(:issue, client: other_client)   # not visible
+        other_issue  = create(:issue)
+        create(:client_issue, issue: other_issue, client: other_client)  # not visible
         scope = IssuePolicy::Scope.new(user, Issue).resolve
         expect(scope).to include(issue)
         expect(scope.count).to eq(1)
@@ -81,7 +85,8 @@ RSpec.describe IssuePolicy do
 
       it 'includes issues shared with their clients' do
         other_client  = create(:client)
-        shared_issue  = create(:issue, client: other_client)
+        shared_issue  = create(:issue)
+        create(:client_issue, issue: shared_issue, client: other_client)
         create(:client_issue, issue: shared_issue, client: client)
         scope = IssuePolicy::Scope.new(user, Issue).resolve
         expect(scope).to include(issue)

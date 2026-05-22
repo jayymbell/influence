@@ -61,7 +61,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_22_155142) do
   create_table "client_issues", force: :cascade do |t|
     t.bigint "client_id", null: false
     t.bigint "issue_id", null: false
-    t.boolean "is_primary", default: false, null: false
     t.bigint "shared_by_id"
     t.datetime "shared_at"
     t.datetime "created_at", null: false
@@ -137,15 +136,12 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_22_155142) do
     t.text "notes"
     t.string "tags", default: [], array: true
     t.integer "status", default: 0, null: false
-    t.bigint "client_id", null: false
     t.datetime "closed_at"
     t.bigint "closed_by_id"
     t.bigint "created_by_id"
     t.bigint "updated_by_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["client_id", "status"], name: "index_issues_on_client_id_and_status"
-    t.index ["client_id"], name: "index_issues_on_client_id"
     t.index ["status"], name: "index_issues_on_status"
     t.index ["tags"], name: "index_issues_on_tags", using: :gin
   end
@@ -253,7 +249,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_22_155142) do
   add_foreign_key "issue_people", "issues"
   add_foreign_key "issue_people", "people"
   add_foreign_key "issue_people", "users", column: "added_by_id"
-  add_foreign_key "issues", "clients"
   add_foreign_key "issues", "users", column: "closed_by_id"
   add_foreign_key "issues", "users", column: "created_by_id"
   add_foreign_key "issues", "users", column: "updated_by_id"

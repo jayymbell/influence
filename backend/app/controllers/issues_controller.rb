@@ -12,8 +12,7 @@ class IssuesController < ApplicationController
     @issues = @issues.where(status: params[:status]) if params[:status].present?
     if params[:client_id].present?
       cid = params[:client_id].to_i
-      shared_ids = ClientIssue.where(client_id: cid).select(:issue_id)
-      @issues = @issues.where(client_id: cid).or(@issues.where(id: shared_ids))
+      @issues = @issues.where(id: ClientIssue.where(client_id: cid).select(:issue_id))
     end
 
     if params[:query].present?
@@ -23,7 +22,7 @@ class IssuesController < ApplicationController
 
     page     = (params[:page] || 1).to_i
     per_page = (params[:per_page] || 25).to_i
-    @issues  = @issues.includes(:client, :client_issues, :issue_people)
+    @issues  = @issues.includes(:client_issues, :issue_people)
                       .order(title: :asc)
                       .offset((page - 1) * per_page)
                       .limit(per_page)
@@ -40,12 +39,14 @@ class IssuesController < ApplicationController
 
   # POST /issues
   def create
+    client_id = params.dig(:issue, :client_id)
     @issue = Issue.new(issue_params)
     @issue.created_by = current_user
     @issue.updated_by = current_user
     authorize @issue
 
     if @issue.save
+      @issue.client_issues.create!(client_id: client_id, shared_by: current_user, shared_at: Time.current) if client_id.present?
       render_success(data: { issue: issue_data(@issue) }, message: 'Issue created.', status: :created)
     else
       render_error(errors: @issue.errors.full_messages, message: 'Issue creation failed.')
@@ -103,6 +104,6 @@ class IssuesController < ApplicationController
   end
 
   def issue_params
-    params.expect(issue: [:title, :description, :notes, :client_id, :status, { tags: [] }])
+    params.expect(issue: [:title, :description, :notes, :status, { tags: [] }])
   end
 end

@@ -21,11 +21,6 @@ RSpec.describe Issue, type: :model do
       expect(issue).not_to be_valid
       expect(issue.errors[:title]).to be_present
     end
-
-    it 'requires a client' do
-      issue.client = nil
-      expect(issue).not_to be_valid
-    end
   end
 
   describe 'status enum' do

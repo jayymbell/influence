@@ -127,7 +127,6 @@
                 <tr>
                   <th>Title</th>
                   <th>Status</th>
-                  <th>Primary Client</th>
                   <th></th>
                 </tr>
               </thead>
@@ -137,7 +136,6 @@
                   <td>
                     <v-chip size="x-small" :color="issueStatusColor(issue.status)" variant="tonal">{{ issue.status }}</v-chip>
                   </td>
-                  <td>{{ issue.client?.display_name || '—' }}</td>
                   <td class="text-right">
                     <v-btn variant="text" size="small" :to="{ name: 'IssueShow', params: { id: issue.id } }">View</v-btn>
                   </td>

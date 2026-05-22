@@ -79,7 +79,7 @@ const useIssueStore = defineStore('IssueStore', () => {
   const shareWithClient = async (issueId, clientId) => {
     const response = await issuesApi.shareWithClient(issueId, clientId)
     if (currentIssue.value?.id === issueId) {
-      currentIssue.value.shared_clients = response.data.clients
+      currentIssue.value.clients = response.data.clients
     }
     return response.data.clients
   }
@@ -87,7 +87,7 @@ const useIssueStore = defineStore('IssueStore', () => {
   const unshareFromClient = async (issueId, clientId) => {
     const response = await issuesApi.unshareFromClient(issueId, clientId)
     if (currentIssue.value?.id === issueId) {
-      currentIssue.value.shared_clients = response.data.clients
+      currentIssue.value.clients = response.data.clients
     }
     return response.data.clients
   }
