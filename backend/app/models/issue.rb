@@ -13,6 +13,9 @@ class Issue < ApplicationRecord
   has_many :issue_people,   dependent: :destroy
   has_many :people,         through: :issue_people
 
+  has_many :bill_issues,    dependent: :destroy
+  has_many :bills,          through: :bill_issues
+
   validates :title, presence: true, length: { minimum: 2 }
   validates :status, presence: true
 end

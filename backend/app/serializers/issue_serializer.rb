@@ -42,6 +42,20 @@ class IssueSerializer
     issue.issue_people.size
   end
 
+  attribute :bills do |issue|
+    issue.bill_issues.includes(:bill).map do |bi|
+      next nil unless bi.bill
+
+      {
+        id:          bi.bill.id,
+        bill_number: bi.bill.bill_number,
+        title:       bi.bill.title,
+        status:      bi.bill.status,
+        chamber:     bi.bill.chamber
+      }
+    end.compact
+  end
+
   attribute :created_by do |issue|
     issue.created_by ? { id: issue.created_by.id, email: issue.created_by.email } : nil
   end

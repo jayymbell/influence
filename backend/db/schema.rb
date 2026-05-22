@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_05_22_155142) do
+ActiveRecord::Schema[8.0].define(version: 2026_05_23_000400) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -56,6 +56,63 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_22_155142) do
     t.index ["user_id"], name: "index_ahoy_visits_on_user_id"
     t.index ["visit_token"], name: "index_ahoy_visits_on_visit_token", unique: true
     t.index ["visitor_token", "started_at"], name: "index_ahoy_visits_on_visitor_token_and_started_at"
+  end
+
+  create_table "bill_clients", force: :cascade do |t|
+    t.bigint "bill_id", null: false
+    t.bigint "client_id", null: false
+    t.bigint "shared_by_id"
+    t.datetime "shared_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["bill_id", "client_id"], name: "index_bill_clients_on_bill_id_and_client_id", unique: true
+    t.index ["client_id"], name: "index_bill_clients_on_client_id"
+  end
+
+  create_table "bill_issues", force: :cascade do |t|
+    t.bigint "bill_id", null: false
+    t.bigint "issue_id", null: false
+    t.bigint "added_by_id"
+    t.datetime "added_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["bill_id", "issue_id"], name: "index_bill_issues_on_bill_id_and_issue_id", unique: true
+    t.index ["issue_id"], name: "index_bill_issues_on_issue_id"
+  end
+
+  create_table "bill_people", force: :cascade do |t|
+    t.bigint "bill_id", null: false
+    t.bigint "person_id", null: false
+    t.bigint "added_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["bill_id", "person_id"], name: "index_bill_people_on_bill_id_and_person_id", unique: true
+    t.index ["person_id"], name: "index_bill_people_on_person_id"
+  end
+
+  create_table "bills", force: :cascade do |t|
+    t.string "bill_number"
+    t.integer "chamber"
+    t.integer "session_year"
+    t.string "title", null: false
+    t.text "description"
+    t.text "notes"
+    t.string "tags", default: [], array: true
+    t.integer "status", default: 0, null: false
+    t.bigint "companion_bill_id"
+    t.string "external_id"
+    t.string "source_url"
+    t.datetime "last_synced_at"
+    t.bigint "created_by_id"
+    t.bigint "updated_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["chamber"], name: "index_bills_on_chamber"
+    t.index ["companion_bill_id"], name: "index_bills_on_companion_bill_id"
+    t.index ["external_id"], name: "index_bills_on_external_id"
+    t.index ["session_year"], name: "index_bills_on_session_year"
+    t.index ["status"], name: "index_bills_on_status"
+    t.index ["tags"], name: "index_bills_on_tags", using: :gin
   end
 
   create_table "client_issues", force: :cascade do |t|
@@ -235,6 +292,18 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_22_155142) do
     t.index ["system_user"], name: "index_users_on_system_user"
   end
 
+  add_foreign_key "bill_clients", "bills"
+  add_foreign_key "bill_clients", "clients"
+  add_foreign_key "bill_clients", "users", column: "shared_by_id"
+  add_foreign_key "bill_issues", "bills"
+  add_foreign_key "bill_issues", "issues"
+  add_foreign_key "bill_issues", "users", column: "added_by_id"
+  add_foreign_key "bill_people", "bills"
+  add_foreign_key "bill_people", "people"
+  add_foreign_key "bill_people", "users", column: "added_by_id"
+  add_foreign_key "bills", "bills", column: "companion_bill_id"
+  add_foreign_key "bills", "users", column: "created_by_id"
+  add_foreign_key "bills", "users", column: "updated_by_id"
   add_foreign_key "client_issues", "clients"
   add_foreign_key "client_issues", "issues"
   add_foreign_key "client_issues", "users", column: "shared_by_id"
