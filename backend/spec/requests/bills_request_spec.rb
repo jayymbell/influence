@@ -598,4 +598,58 @@ RSpec.describe 'Bills API', type: :request do
       expect(response).to have_http_status(:bad_gateway)
     end
   end
+
+  # POST /bills/:id/import_authors
+  # ---------------------------------------------------------------------------
+  describe 'POST /bills/:id/import_authors' do
+    let(:admin) { create(:user, :admin) }
+    let(:bill)  { create(:bill, bill_number: "SF 1", session_year: 2026, chamber: "senate") }
+
+    let(:revisor_authors_html) do
+      <<~HTML
+        <html><body>
+          <h2>Authors <span>(1)</span></h2>
+          <div class="author"><ul>
+            <li><a href="https://www.senate.mn/members/member_bio.html?leg_id=99">Rarick</a></li>
+          </ul></div>
+        </body></html>
+      HTML
+    end
+
+    let(:senator_bio_html) do
+      <<~HTML
+        <html><body>
+          <h1>Senator Jason Rarick (11, R)</h1>
+          <a href="mailto:jason.rarick@senate.mn">jason.rarick@senate.mn</a>
+        </body></html>
+      HTML
+    end
+
+    before do
+      stub_request(:get, /revisor\.mn\.gov\/bills/)
+        .to_return(status: 200, body: revisor_authors_html, headers: { "Content-Type" => "text/html" })
+      stub_request(:get, /leg_id=99/)
+        .to_return(status: 200, body: senator_bio_html, headers: { "Content-Type" => "text/html" })
+    end
+
+    it 'creates a Person and links them to the bill' do
+      expect {
+        post "/bills/#{bill.id}/import_authors", headers: auth_headers_for(admin)
+      }.to change(Person, :count).by(1).and change(BillPerson, :count).by(1)
+
+      expect(response).to have_http_status(:ok)
+      expect(json_response['added'].first['display_name']).to eq "Jason Rarick"
+    end
+
+    it 'returns 403 for manager not on bill' do
+      manager = create(:user, :with_role, role_name: 'manager')
+      post "/bills/#{bill.id}/import_authors", headers: auth_headers_for(manager)
+      expect(response).to have_http_status(:forbidden)
+    end
+
+    it 'returns 401 without authentication' do
+      post "/bills/#{bill.id}/import_authors"
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
 end

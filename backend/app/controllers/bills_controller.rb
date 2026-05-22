@@ -2,7 +2,7 @@
 
 class BillsController < ApplicationController
   before_action :authenticate_user!
-  before_action :set_bill, only: %i[show update destroy link_external refresh]
+  before_action :set_bill, only: %i[show update destroy link_external refresh import_authors]
 
   rescue_from BillImportService::ExternalError do |e|
     render_error(errors: [ e.message ], message: "External service error.", status: :bad_gateway)
@@ -33,7 +33,7 @@ class BillsController < ApplicationController
     page     = (params[:page] || 1).to_i
     per_page = (params[:per_page] || 25).to_i
     order_sql = Arel.sql(
-      "COALESCE(REGEXP_REPLACE(bill_number, '[^0-9]', '', 'g'), '')::bigint ASC, bill_number ASC"
+      "NULLIF(REGEXP_REPLACE(COALESCE(bill_number, ''), '[^0-9]', '', 'g'), '')::bigint ASC NULLS LAST, bill_number ASC"
     )
     @bills   = @bills.includes(:bill_issues, :bill_clients, :bill_people)
                      .order(order_sql)
@@ -137,6 +137,21 @@ class BillsController < ApplicationController
 
     bill = BillImportService.refresh(bill: @bill)
     render_success(data: { bill: bill_data(bill) }, message: "Bill refreshed.")
+  end
+
+  # POST /bills/:id/import_authors
+  def import_authors
+    authorize @bill, :import_authors?
+
+    result = BillImportService.scrape_authors(bill: @bill, created_by: current_user)
+    render_success(
+      data: {
+        added:   result[:added].map   { |p| { id: p.id, display_name: p.display_name } },
+        skipped: result[:skipped].map { |p| { id: p.id, display_name: p.display_name } },
+        errors:  result[:errors]
+      },
+      message: "Authors imported: #{result[:added].size} added, #{result[:skipped].size} already linked."
+    )
   end
 
   private

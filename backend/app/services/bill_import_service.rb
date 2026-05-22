@@ -8,6 +8,7 @@
 #   BillImportService.import(external_id: "ocd-bill/...", created_by: user)
 #   BillImportService.refresh(bill: bill)
 #   BillImportService.link(bill: bill, external_id: "ocd-bill/...")
+#   BillImportService.scrape_authors(bill: bill, created_by: user)
 class BillImportService
   OPEN_STATES_BASE_URL = "https://v3.openstates.org"
   REVISOR_BASE_URL     = "https://www.revisor.mn.gov"
@@ -139,6 +140,56 @@ class BillImportService
     bill
   end
 
+  # Scrape the MN Revisor bill page for authors, follow each author bio link,
+  # find-or-create a Person record, and link them to the bill.
+  # Never removes existing BillPerson records.
+  #
+  # @param bill [Bill]
+  # @param created_by [User]
+  # @return [Hash] { added: Array<Person>, skipped: Array<Person>, errors: Array<String> }
+  def self.scrape_authors(bill:, created_by:)
+    raise ExternalError, "Bill has no bill_number or session_year to build Revisor URL" \
+      if bill.bill_number.blank? || bill.session_year.blank?
+
+    revisor_url = build_revisor_url(bill.bill_number, bill.session_year.to_s, bill.chamber)
+    raise ExternalError, "Cannot build Revisor URL for this bill" unless revisor_url
+
+    html = http_get_html(revisor_url)
+    doc  = Nokogiri::HTML(html)
+
+    # Find the Authors h2, then collect all <a> links in the following .author div
+    author_links = []
+    h = doc.css("h2").find { |n| n.text.strip.start_with?("Authors") }
+    if h
+      sib = h.next_sibling
+      sib = sib.next_sibling while sib && sib.text.strip.empty?
+      author_links = sib&.css("a")&.map { |a| a["href"] } || []
+    end
+
+    raise ExternalError, "No authors found on Revisor page" if author_links.empty?
+
+    added   = []
+    skipped = []
+    errors  = []
+
+    author_links.each do |bio_url|
+      bio_info = scrape_legislator_bio(bio_url)
+      next errors << "Could not scrape bio at #{bio_url}" unless bio_info
+
+      person = find_or_create_person(bio_info, created_by)
+      if BillPerson.exists?(bill_id: bill.id, person_id: person.id)
+        skipped << person
+      else
+        BillPerson.create!(bill: bill, person: person, added_by: created_by)
+        added << person
+      end
+    rescue StandardError => e
+      errors << "#{bio_url}: #{e.message}"
+    end
+
+    { added: added, skipped: skipped, errors: errors }
+  end
+
   # ---------------------------------------------------------------------------
   private
   # ---------------------------------------------------------------------------
@@ -217,38 +268,115 @@ class BillImportService
     match ? match[1].to_i : nil
   end
 
-  # Scrape the MN Revisor of Statutes bill page to get the Description text.
-  # Returns nil silently on any failure so a scrape error never breaks import.
-  #
-  # URL format: /bills/{legislature}/{start_year}/0/{CHAMBER}/{number}/?body={body}
-  # e.g. /bills/94/2025/0/SF/5092/?body=senate
-  def self.scrape_revisor_description(identifier, session)
-    return nil if identifier.blank? || session.blank?
-
-    # Parse identifier: "SF 5092" -> type="SF", number="5092"
-    match = identifier.strip.match(/\A([A-Z]+)\s*(\d+)\z/i)
+  # Build the MN Revisor bill URL. Returns nil if the identifier can't be parsed.
+  def self.build_revisor_url(identifier, session, chamber = nil)
+    match = identifier.to_s.strip.match(/\A([A-Z]+)\s*(\d+)\z/i)
     return nil unless match
 
-    bill_type   = match[1].upcase   # "SF" or "HF"
-    bill_number = match[2]          # "5092"
-
-    # Derive the URL year and legislature from the session string.
-    # Open States may return "2026" (single end-year) or "2025-2026" (range).
-    # The Revisor URL uses the year the bill was introduced; using the last
-    # year of the session works for both halves of the session.
-    # The legislature formula requires the ODD start year, so even years get -1.
-    parts      = session.split("-")
+    bill_type   = match[1].upcase
+    bill_number = match[2]
+    parts      = session.to_s.split("-")
     url_year   = parts.last.to_i
     return nil if url_year.zero?
-    odd_year   = url_year.odd? ? url_year : url_year - 1
+
+    odd_year    = url_year.odd? ? url_year : url_year - 1
     legislature = 94 - ((2025 - odd_year) / 2)
+    body = (chamber.to_s == "senate" || bill_type.start_with?("SF")) ? "senate" : "house"
+    "#{REVISOR_BASE_URL}/bills/#{legislature}/#{url_year}/0/#{bill_type}/#{bill_number}/?body=#{body}"
+  end
 
-    body = bill_type.start_with?("SF") ? "senate" : "house"
-    path = "/bills/#{legislature}/#{url_year}/0/#{bill_type}/#{bill_number}/?body=#{body}"
+  # Scrape a MN legislator bio page (senate.mn or house.mn.gov) and return
+  # { first_name:, last_name:, display_name:, title:, phone:, email: } or nil on failure.
+  def self.scrape_legislator_bio(url)
+    return nil if url.blank?
 
-    uri = URI("#{REVISOR_BASE_URL}#{path}")
+    html = http_get_html(url)
+    doc  = Nokogiri::HTML(html)
+
+    # Both senate and house pages put the full name in an <h1> tag,
+    # e.g. "Rep. Jim Joy" or "Senator Jeff R. Howe (13, R)".
+    # The senate page has an empty <h1> for the logo area — skip blank ones.
+    raw_name = doc.css("h1").map { |n| n.text.strip }.find(&:present?)
+    return nil if raw_name.blank?
+
+    # Extract district number before stripping parentheticals
+    # Senate: "Senator Jeff R. Howe (13, R)"  → "13" (district in h1)
+    # House:  "Rep. Jim Joy" + span "(R) District: 04B" → "04B" (district in span)
+    district = raw_name.match(/District:\s*([\w]+)/i)&.captures&.first ||
+               raw_name.match(/\((\d+[A-Z]?),/i)&.captures&.first ||
+               doc.css("span").map { |n| n.text.strip }
+                  .find { |t| t.match?(/District:/i) }
+                  &.then { |t| t.match(/District:\s*([\w]+)/i)&.captures&.first }
+
+    # Strip trailing district/party "(13, R)" or "(R) District: 04B" fragments
+    clean = raw_name.gsub(/\s*\(.*\z/, "").gsub(/\s*District:.*\z/i, "").strip
+
+    # Strip honorific prefix: Rep., Senator, Representative, Sen.
+    honorific = clean.match(/\A(Rep\.|Senator|Representative|Sen\.)\s+/i)
+    title     = honorific ? honorific[1] : nil
+    name_part = honorific ? clean.sub(honorific[0], "").strip : clean
+
+    # Parse "First [Middle] Last" — use first & last word
+    parts      = name_part.split
+    first_name = parts.first
+    last_name  = parts.last
+    return nil if first_name.blank? || last_name.blank?
+
+    display_name = "#{first_name} #{last_name}"
+
+    # Build organization_name from chamber + district
+    chamber_label = case title&.downcase
+                    when "senator"                  then "MN Senate"
+                    when "rep.", "representative"    then "MN House"
+                    end
+    organization_name = district.present? ? "#{chamber_label} District #{district}" : chamber_label
+
+    # Phone: first 10-digit number on the page
+    phone = doc.text.scan(/\(?\d{3}\)?[-.\s]\d{3}[-.\s]\d{4}/).first&.strip
+
+    # Email: a mailto: link that isn't a general office address
+    email_link = doc.css("a[href^='mailto:']")
+                    .map { |a| a["href"].sub("mailto:", "").strip }
+                    .reject { |e| e =~ /webmaster|information@|comments/i }
+                    .first
+
+    { first_name: first_name, last_name: last_name, display_name: display_name,
+      title: title, organization_name: organization_name, phone: phone, email: email_link }
+  rescue StandardError => e
+    Rails.logger.warn "[BillImportService] Bio scrape failed for #{url}: #{e.message}"
+    nil
+  end
+
+  # Find an existing Person by first+last name (case-insensitive) or create one.
+  def self.find_or_create_person(bio, created_by)
+    person = Person.kept
+                   .where("lower(first_name) = ? AND lower(last_name) = ?",
+                          bio[:first_name].downcase, bio[:last_name].downcase)
+                   .first
+
+    return person if person
+
+    Person.create!(
+      first_name:        bio[:first_name],
+      last_name:         bio[:last_name],
+      display_name:      bio[:display_name],
+      title:             bio[:title],
+      organization_name: bio[:organization_name],
+      phone:             bio[:phone],
+      email:             bio[:email],
+      created_by:        created_by,
+      updated_by:        created_by
+    )
+  end
+
+  # Perform an HTTP GET and return the response body as a string.
+  # Follows up to 5 redirects. Raises ExternalError on non-2xx or network failure.
+  def self.http_get_html(url, redirect_limit = 5)
+    raise ExternalError, "Too many redirects fetching #{url}" if redirect_limit.zero?
+
+    uri  = URI(url)
     http = Net::HTTP.new(uri.host, uri.port)
-    http.use_ssl   = true
+    http.use_ssl      = (uri.scheme == "https")
     http.open_timeout = 8
     http.read_timeout = 8
 
@@ -256,18 +384,43 @@ class BillImportService
     request["User-Agent"] = "Mozilla/5.0 (compatible; Rails)"
     request["Accept"]     = "text/html"
 
-    Rails.logger.info "[BillImportService] Revisor scrape GET #{uri}"
+    Rails.logger.info "[BillImportService] HTML GET #{uri}"
     response = http.request(request)
-    return nil unless response.is_a?(Net::HTTPSuccess)
 
-    doc  = Nokogiri::HTML(response.body)
+    case response
+    when Net::HTTPSuccess
+      response.body
+    when Net::HTTPRedirection
+      location = response["Location"]
+      raise ExternalError, "Redirect with no Location from #{uri}" if location.blank?
+      new_uri = URI.join(uri, location)
+      Rails.logger.info "[BillImportService] Redirect → #{new_uri}"
+      http_get_html(new_uri.to_s, redirect_limit - 1)
+    else
+      raise ExternalError, "Unexpected response #{response.code} from #{uri}"
+    end
+  rescue Net::OpenTimeout, Net::ReadTimeout => e
+    raise ExternalError, "Request timed out: #{e.message}"
+  rescue Errno::ECONNREFUSED, SocketError => e
+    raise ExternalError, "Could not connect: #{e.message}"
+  end
+
+  # Scrape the MN Revisor of Statutes bill page to get the Description text.
+  # Returns nil silently on any failure so a scrape error never breaks import.
+  def self.scrape_revisor_description(identifier, session)
+    return nil if identifier.blank? || session.blank?
+
+    url = build_revisor_url(identifier, session)
+    return nil unless url
+
+    html = http_get_html(url)
+    doc  = Nokogiri::HTML(html)
     h    = doc.css("h2, h3").find { |node| node.text.strip == "Description" }
     return nil unless h
 
     sib = h.next_sibling
     sib = sib.next_sibling while sib && sib.text.strip.empty?
-    text = sib&.text&.strip.presence
-    text
+    sib&.text&.strip.presence
   rescue StandardError => e
     Rails.logger.warn "[BillImportService] Revisor scrape failed for #{identifier}: #{e.message}"
     nil

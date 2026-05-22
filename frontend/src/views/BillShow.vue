@@ -70,6 +70,13 @@
               :loading="refreshing"
               @click="doRefresh"
             >Refresh</v-btn>
+            <v-btn
+              variant="outlined"
+              size="small"
+              class="ml-2"
+              :loading="importingAuthors"
+              @click="doImportAuthors"
+            >Import Authors</v-btn>
             <v-tooltip :text="bill.last_synced_at">
               <template #activator="{ props: tooltipProps }">
                 <span v-bind="tooltipProps" class="ml-2 text-caption text-medium-emphasis" style="cursor:default">
@@ -318,7 +325,8 @@ const loading = ref(false)
 const activeTab = ref('issues')
 const editDialogOpen = ref(false)
 const linkModalOpen  = ref(false)
-const refreshing     = ref(false)
+const refreshing        = ref(false)
+const importingAuthors  = ref(false)
 const issuesLoading = ref(false)
 const clientsLoading = ref(false)
 const peopleLoading = ref(false)
@@ -543,6 +551,26 @@ const doRefresh = async () => {
     showSnackbar(e, 'error')
   } finally {
     refreshing.value = false
+  }
+}
+
+const doImportAuthors = async () => {
+  importingAuthors.value = true
+  try {
+    const response = await billsApi.importAuthors(bill.value.id)
+    const { added, skipped, errors } = response.data
+    const msgs = []
+    if (added.length)   msgs.push(`Added: ${added.map((p) => p.display_name).join(', ')}`)
+    if (skipped.length) msgs.push(`Already linked: ${skipped.map((p) => p.display_name).join(', ')}`)
+    if (errors.length)  msgs.push(`Errors: ${errors.join('; ')}`)
+    showSnackbar(msgs.length ? msgs : [response.data.message || 'Done.'], 'success')
+    await fetchBill()
+    fetchAvailablePeople()
+  } catch (error) {
+    const e = error.response?.data?.errors || ['An unknown error occurred']
+    showSnackbar(e, 'error')
+  } finally {
+    importingAuthors.value = false
   }
 }
 

@@ -333,6 +333,15 @@ RSpec.describe BillImportService do
       expect(BillImportService.scrape_revisor_description("HF 100", "2025-2026")).to be_nil
     end
 
+    it "follows a redirect and returns the description" do
+      stub_request(:get, /revisor\.mn\.gov\/bills\/94\/2025/)
+        .to_return(status: 301, headers: { "Location" => "https://www.revisor.mn.gov/bills/94/2026/0/HF/100/?body=house" })
+      stub_request(:get, /revisor\.mn\.gov\/bills\/94\/2026/)
+        .to_return(status: 200, body: REVISOR_HTML_WITH_DESC, headers: { "Content-Type" => "text/html" })
+      result = BillImportService.scrape_revisor_description("HF 100", "2025")
+      expect(result).to eq "This is the Revisor description."
+    end
+
     it "returns nil on network timeout without raising" do
       stub_request(:get, /revisor\.mn\.gov\/bills/).to_timeout
       expect(BillImportService.scrape_revisor_description("HF 100", "2025-2026")).to be_nil
@@ -375,6 +384,141 @@ RSpec.describe BillImportService do
       expect {
         BillImportService.search(query: "any")
       }.to raise_error(BillImportService::ExternalError, /Invalid response/)
+    end
+  end
+
+  # -------------------------------------------------------------------------
+  describe ".scrape_legislator_bio" do
+    SENATE_BIO_HTML = <<~HTML
+      <html><body>
+        <h1>Senator Jeff R. Howe (13, R)</h1>
+        <p>651-296-2084</p>
+        <a href="mailto:jeff.howe@senate.mn">jeff.howe@senate.mn</a>
+      </body></html>
+    HTML
+
+    HOUSE_BIO_HTML = <<~HTML
+      <html><body>
+        <h1>Rep. Jim Joy (R) District: 04B</h1>
+        <p>651-296-6829</p>
+        <a href="mailto:rep.jim.joy@house.mn.gov">rep.jim.joy@house.mn.gov</a>
+      </body></html>
+    HTML
+
+    it "parses first name, last name, title and display_name from a senate bio page" do
+      stub_request(:get, /senate\.mn\/members\/member_bio/)
+        .to_return(status: 200, body: SENATE_BIO_HTML, headers: { "Content-Type" => "text/html" })
+      bio = BillImportService.scrape_legislator_bio("https://www.senate.mn/members/member_bio.html?leg_id=15401")
+      expect(bio[:first_name]).to eq "Jeff"
+      expect(bio[:last_name]).to eq  "Howe"
+      expect(bio[:display_name]).to  eq "Jeff Howe"
+      expect(bio[:title]).to eq "Senator"
+    end
+
+    it "parses a house member bio page" do
+      stub_request(:get, /house\.mn\.gov\/members\/profile/)
+        .to_return(status: 200, body: HOUSE_BIO_HTML, headers: { "Content-Type" => "text/html" })
+      bio = BillImportService.scrape_legislator_bio("https://www.house.mn.gov/members/profile/15591")
+      expect(bio[:first_name]).to eq "Jim"
+      expect(bio[:last_name]).to eq  "Joy"
+      expect(bio[:title]).to eq "Rep."
+    end
+
+    it "returns nil on network failure" do
+      stub_request(:get, /senate\.mn/).to_timeout
+      expect(BillImportService.scrape_legislator_bio("https://www.senate.mn/members/member_bio.html?leg_id=1")).to be_nil
+    end
+
+    it "returns nil when the page has no h1" do
+      stub_request(:get, /senate\.mn/)
+        .to_return(status: 200, body: "<html><body><p>nothing</p></body></html>")
+      expect(BillImportService.scrape_legislator_bio("https://www.senate.mn/members/member_bio.html?leg_id=1")).to be_nil
+    end
+  end
+
+  # -------------------------------------------------------------------------
+  describe ".scrape_authors" do
+    let(:admin)  { create(:user, :admin) }
+    let(:bill)   { create(:bill, bill_number: "SF 5092", session_year: 2026, chamber: "senate") }
+
+    REVISOR_WITH_AUTHORS = <<~HTML
+      <html><body>
+        <h2>Description</h2><p>Some bill.</p>
+        <h2>Authors <span>(2)</span></h2>
+        <div class="author"><ul>
+          <li><a href="https://www.senate.mn/members/member_bio.html?leg_id=11">Howe</a></li>
+          <li><a href="https://www.senate.mn/members/member_bio.html?leg_id=22">Smith</a></li>
+        </ul></div>
+      </body></html>
+    HTML
+
+    SENATOR_HOWE_BIO = <<~HTML
+      <html><body>
+        <h1>Senator Jeff Howe (13, R)</h1>
+        <a href="mailto:jeff.howe@senate.mn">jeff.howe@senate.mn</a>
+      </body></html>
+    HTML
+
+    SENATOR_SMITH_BIO = <<~HTML
+      <html><body>
+        <h1>Senator Alice Smith (5, D)</h1>
+        <a href="mailto:alice.smith@senate.mn">alice.smith@senate.mn</a>
+      </body></html>
+    HTML
+
+    before do
+      stub_request(:get, /revisor\.mn\.gov\/bills/)
+        .to_return(status: 200, body: REVISOR_WITH_AUTHORS, headers: { "Content-Type" => "text/html" })
+      stub_request(:get, /leg_id=11/)
+        .to_return(status: 200, body: SENATOR_HOWE_BIO, headers: { "Content-Type" => "text/html" })
+      stub_request(:get, /leg_id=22/)
+        .to_return(status: 200, body: SENATOR_SMITH_BIO, headers: { "Content-Type" => "text/html" })
+    end
+
+    it "creates Person records and BillPerson links for each author" do
+      result = BillImportService.scrape_authors(bill: bill, created_by: admin)
+      expect(result[:added].map(&:last_name)).to match_array(%w[Howe Smith])
+      expect(result[:skipped]).to be_empty
+      expect(result[:errors]).to be_empty
+      expect(bill.bill_people.count).to eq 2
+    end
+
+    it "skips authors already linked to the bill" do
+      existing = create(:person, first_name: "Jeff", last_name: "Howe", display_name: "Jeff Howe")
+      BillPerson.create!(bill: bill, person: existing, added_by: admin)
+
+      result = BillImportService.scrape_authors(bill: bill, created_by: admin)
+      expect(result[:added].map(&:last_name)).to eq ["Smith"]
+      expect(result[:skipped].map(&:last_name)).to eq ["Howe"]
+    end
+
+    it "reuses an existing Person record matched by first+last name" do
+      create(:person, first_name: "Jeff", last_name: "Howe", display_name: "Jeff Howe")
+      expect {
+        BillImportService.scrape_authors(bill: bill, created_by: admin)
+      }.to change(Person, :count).by(1) # only Smith is new
+    end
+
+    it "raises ExternalError when bill has no bill_number" do
+      bill.bill_number = nil
+      expect {
+        BillImportService.scrape_authors(bill: bill, created_by: admin)
+      }.to raise_error(BillImportService::ExternalError, /bill_number/)
+    end
+
+    it "raises ExternalError when no authors are found on the page" do
+      stub_request(:get, /revisor\.mn\.gov\/bills/)
+        .to_return(status: 200, body: REVISOR_HTML_NO_DESC, headers: { "Content-Type" => "text/html" })
+      expect {
+        BillImportService.scrape_authors(bill: bill, created_by: admin)
+      }.to raise_error(BillImportService::ExternalError, /No authors found/)
+    end
+
+    it "collects bio scrape failures into errors without raising" do
+      stub_request(:get, /leg_id=22/).to_timeout
+      result = BillImportService.scrape_authors(bill: bill, created_by: admin)
+      expect(result[:added].map(&:last_name)).to eq ["Howe"]
+      expect(result[:errors].size).to eq 1
     end
   end
 end

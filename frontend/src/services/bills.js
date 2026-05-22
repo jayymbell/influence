@@ -89,6 +89,10 @@ const billsApi = {
   refresh(id) {
     return api.post(`/bills/${id}/refresh`)
   },
+
+  importAuthors(id) {
+    return api.post(`/bills/${id}/import_authors`)
+  },
 }
 
 export default billsApi

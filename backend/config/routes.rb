@@ -61,6 +61,7 @@ Rails.application.routes.draw do
     member do
       patch :link_external
       post  :refresh
+      post  :import_authors
     end
     resources :issues,  only: [:index, :create, :destroy], controller: 'bill_issues'
     resources :clients, only: [:index, :create, :destroy], controller: 'bill_clients'

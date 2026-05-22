@@ -37,6 +37,10 @@ class BillPolicy < ApplicationPolicy
     admin_or_staff? || manager_on_bill?
   end
 
+  def import_authors?
+    admin_or_staff? || manager_on_bill?
+  end
+
   class Scope < ApplicationPolicy::Scope
     def resolve
       if user.admin? || user.staff?
