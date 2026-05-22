@@ -20,7 +20,6 @@
               class="ml-2"
             >{{ issue.status }}</v-chip>
           </h1>
-          <p v-if="issue.client" class="text-medium-emphasis mb-0">{{ issue.client.display_name }}</p>
           <div v-if="issue.tags?.length" class="mt-1">
             <v-chip
               v-for="tag in issue.tags"
@@ -76,7 +75,7 @@
       <!-- Tabs -->
       <v-tabs v-model="activeTab" class="mt-4">
         <v-tab value="people">People</v-tab>
-        <v-tab value="clients">Shared Clients</v-tab>
+        <v-tab value="clients">Clients</v-tab>
       </v-tabs>
       <v-divider />
 
@@ -150,7 +149,7 @@
             <v-skeleton-loader v-for="n in 3" :key="n" type="list-item" class="mb-2" />
           </template>
           <template v-else>
-            <v-table v-if="issue.shared_clients?.length" hover>
+            <v-table hover>
               <thead>
                 <tr>
                   <th>Client</th>
@@ -159,15 +158,20 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="c in issue.shared_clients" :key="c.id">
+                <tr v-if="issue.client">
                   <td>
-                    {{ c.display_name }}
-                    <v-chip v-if="c.is_primary" size="x-small" color="primary" variant="tonal" class="ml-1">primary</v-chip>
+                    {{ issue.client.display_name }}
+                    <v-chip size="x-small" color="primary" variant="tonal" class="ml-1">primary</v-chip>
                   </td>
+                  <td>—</td>
+                  <td></td>
+                </tr>
+                <tr v-for="c in issue.shared_clients" :key="c.id">
+                  <td>{{ c.display_name }}</td>
                   <td>{{ c.shared_at ? new Date(c.shared_at).toLocaleDateString() : '—' }}</td>
                   <td class="text-right">
                     <v-btn
-                      v-if="canShare && !c.is_primary"
+                      v-if="canShare"
                       variant="text"
                       size="small"
                       color="error"
@@ -177,7 +181,6 @@
                 </tr>
               </tbody>
             </v-table>
-            <p v-else class="text-medium-emphasis mt-4">This issue is not shared with any other clients.</p>
           </template>
         </v-window-item>
       </v-window>
@@ -303,8 +306,9 @@ const fetchAvailableShareClients = async () => {
   try {
     const response = await api.get('/clients')
     const linkedIds = (issue.value?.shared_clients || []).map((c) => c.id)
+    const primaryId = issue.value?.client?.id
     availableShareClientOptions.value = (response.data.clients || [])
-      .filter((c) => !linkedIds.includes(c.id))
+      .filter((c) => !linkedIds.includes(c.id) && c.id !== primaryId)
       .map((c) => ({ title: c.display_name, value: c.id }))
   } catch (_) { /* silent */ }
 }

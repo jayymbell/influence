@@ -10,7 +10,11 @@ class IssuesController < ApplicationController
     authorize Issue
 
     @issues = @issues.where(status: params[:status]) if params[:status].present?
-    @issues = @issues.where(client_id: params[:client_id]) if params[:client_id].present?
+    if params[:client_id].present?
+      cid = params[:client_id].to_i
+      shared_ids = ClientIssue.where(client_id: cid).select(:issue_id)
+      @issues = @issues.where(client_id: cid).or(@issues.where(id: shared_ids))
+    end
 
     if params[:query].present?
       q = "%#{params[:query].downcase}%"
