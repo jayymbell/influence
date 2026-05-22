@@ -1,6 +1,6 @@
 class PeopleController < ApplicationController
   before_action :authenticate_user!
-  before_action :set_person, only: %i[show update destroy invite reactivate revoke_invitation]
+  before_action :set_person, only: %i[show update destroy invite reactivate revoke_invitation add_client assign_staff]
 
   # GET /people
   def index
@@ -14,6 +14,7 @@ class PeopleController < ApplicationController
     end
 
     @people = @people.where("lower(display_name) LIKE ?", "%#{params[:query].downcase}%") if params[:query].present?
+    @people = @people.where(client_id: params[:client_id]) if params[:client_id].present?
 
     page     = (params[:page] || 1).to_i
     per_page = (params[:per_page] || 25).to_i
@@ -90,9 +91,59 @@ class PeopleController < ApplicationController
       return render_error(errors: ['Person already has a user account'], message: 'Cannot send invitation.')
     end
 
-    raw_token = Invitation.generate_for(@person, invited_by: current_user)
+    invite_as = @person.client_id.present? ? 'client' : 'staff'
+    raw_token = Invitation.generate_for(@person, invited_by: current_user, invite_as: invite_as)
     InvitationsMailer.invite(@person.active_invitation, raw_token).deliver_later
     render_success(message: 'Invitation sent.')
+  end
+
+  # POST /people/:id/add_client
+  def add_client
+    authorize @person, :add_client?
+
+    org_name = params[:organization_name].presence || @person.organization_name
+    unless org_name.present?
+      return render_error(errors: ['Person has no organization name'], message: 'Cannot add as client.')
+    end
+
+    # Find existing client by case-insensitive legal or display name match
+    client = Client.find_by('lower(legal_name) = lower(?) OR lower(display_name) = lower(?)', org_name, org_name)
+
+    # Create if not found
+    unless client
+      client = Client.new(legal_name: org_name, display_name: org_name,
+                          created_by: current_user, updated_by: current_user)
+      unless client.save
+        return render_error(errors: client.errors.full_messages, message: 'Client creation failed.')
+      end
+    end
+
+    @person.update!(client: client, organization_name: client.display_name, updated_by: current_user)
+
+    client_role = Role.find_by!(name: 'client')
+
+    if @person.user.present?
+      @person.user.roles << client_role unless @person.user.roles.exists?(name: 'client')
+    end
+
+    render_success(data: { person: person_data(@person) }, message: 'Person added as client contact.')
+  end
+
+  # POST /people/:id/assign_staff
+  def assign_staff
+    authorize @person, :assign_staff?
+
+    unless @person.user.present?
+      return render_error(errors: ['Person has no user account'], message: 'Cannot assign role.')
+    end
+
+    staff_role = Role.find_by!(name: 'staff')
+    if @person.user.roles.exists?(name: 'staff')
+      return render_error(errors: ['Person already has the staff role'], message: 'Role already assigned.')
+    end
+
+    @person.user.roles << staff_role
+    render_success(data: { person: person_data(@person) }, message: 'Staff role assigned.')
   end
 
   # DELETE /people/:id/invitation

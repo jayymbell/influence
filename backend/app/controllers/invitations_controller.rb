@@ -27,6 +27,15 @@ class InvitationsController < ApplicationController
     invitation.person.update!(user: user)
     invitation.update!(accepted_at: Time.current)
 
+    # Assign role based on invite intent
+    if invitation.invite_as == 'staff'
+      staff_role = Role.find_by(name: 'staff')
+      user.roles << staff_role if staff_role && !user.roles.exists?(name: 'staff')
+    elsif invitation.invite_as == 'client' || invitation.person.client_id.present?
+      client_role = Role.find_by(name: 'client')
+      user.roles << client_role if client_role && !user.roles.exists?(name: 'client')
+    end
+
     token = generate_jwt_token(user)
     refresh_token = user.refresh_tokens.create!
 

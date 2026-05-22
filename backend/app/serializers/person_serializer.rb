@@ -17,7 +17,7 @@ class PersonSerializer
 
   attribute :user do |person|
     if person.user
-      { id: person.user.id, email: person.user.email }
+      { id: person.user.id, email: person.user.email, roles: person.user.roles.map(&:name) }
     end
   end
 
@@ -35,6 +35,10 @@ class PersonSerializer
 
   attribute :user_id do |person|
     person.user_id
+  end
+
+  attribute :client_id do |person|
+    person.client_id
   end
 
   attribute :invitation_pending do |person|

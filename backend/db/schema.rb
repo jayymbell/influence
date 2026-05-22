@@ -10,9 +10,10 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_04_05_000001) do
+ActiveRecord::Schema[8.0].define(version: 2026_05_22_155142) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+  enable_extension "pg_trgm"
 
   create_table "ahoy_events", force: :cascade do |t|
     t.bigint "visit_id"
@@ -57,6 +58,31 @@ ActiveRecord::Schema[8.0].define(version: 2026_04_05_000001) do
     t.index ["visitor_token", "started_at"], name: "index_ahoy_visits_on_visitor_token_and_started_at"
   end
 
+  create_table "client_staff", force: :cascade do |t|
+    t.bigint "client_id", null: false
+    t.bigint "user_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["client_id", "user_id"], name: "index_client_staff_on_client_id_and_user_id", unique: true
+    t.index ["client_id"], name: "index_client_staff_on_client_id"
+    t.index ["user_id"], name: "index_client_staff_on_user_id"
+  end
+
+  create_table "clients", force: :cascade do |t|
+    t.string "legal_name", null: false
+    t.string "display_name", null: false
+    t.datetime "discarded_at"
+    t.datetime "deactivated_at"
+    t.bigint "created_by_id"
+    t.bigint "updated_by_id"
+    t.bigint "deactivated_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index "lower((legal_name)::text)", name: "index_clients_on_lower_legal_name", unique: true
+    t.index ["discarded_at", "updated_at"], name: "index_clients_on_discarded_at_and_updated_at"
+    t.index ["discarded_at"], name: "index_clients_on_discarded_at"
+  end
+
   create_table "conversations", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.string "title"
@@ -75,6 +101,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_04_05_000001) do
     t.datetime "revoked_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "invite_as"
     t.index ["created_by_id"], name: "index_invitations_on_created_by_id"
     t.index ["person_id"], name: "index_invitations_on_person_id"
     t.index ["token_digest"], name: "index_invitations_on_token_digest", unique: true
@@ -106,8 +133,10 @@ ActiveRecord::Schema[8.0].define(version: 2026_04_05_000001) do
     t.bigint "deactivated_by_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "client_id"
     t.index "lower((display_name)::text)", name: "index_people_on_lower_display_name"
     t.index "lower((email)::text)", name: "index_people_on_lower_email", where: "(email IS NOT NULL)"
+    t.index ["client_id"], name: "index_people_on_client_id"
     t.index ["created_by_id"], name: "index_people_on_created_by_id"
     t.index ["deactivated_by_id"], name: "index_people_on_deactivated_by_id"
     t.index ["discarded_at"], name: "index_people_on_discarded_at"
@@ -167,10 +196,16 @@ ActiveRecord::Schema[8.0].define(version: 2026_04_05_000001) do
     t.index ["system_user"], name: "index_users_on_system_user"
   end
 
+  add_foreign_key "client_staff", "clients"
+  add_foreign_key "client_staff", "users"
+  add_foreign_key "clients", "users", column: "created_by_id"
+  add_foreign_key "clients", "users", column: "deactivated_by_id"
+  add_foreign_key "clients", "users", column: "updated_by_id"
   add_foreign_key "conversations", "users"
   add_foreign_key "invitations", "people"
   add_foreign_key "invitations", "users", column: "created_by_id"
   add_foreign_key "messages", "conversations"
+  add_foreign_key "people", "clients"
   add_foreign_key "people", "users"
   add_foreign_key "people", "users", column: "created_by_id"
   add_foreign_key "people", "users", column: "deactivated_by_id"

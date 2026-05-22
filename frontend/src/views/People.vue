@@ -43,9 +43,35 @@
             <span v-if="p.title" class="text-medium-emphasis"> — {{ p.title }}</span>
             <span v-if="p.organization_name" class="text-medium-emphasis">, {{ p.organization_name }}</span>
             <div v-if="p.email" class="text-body-2 text-medium-emphasis">{{ p.email }}</div>
+            <div class="mt-1">
+              <v-chip
+                v-if="p.client_id && !p.user_id"
+                size="x-small"
+                color="secondary"
+                variant="outlined"
+                class="mr-1"
+              >client</v-chip>
+              <v-chip
+                v-for="role in (p.user && p.user.roles || [])"
+                :key="role"
+                size="x-small"
+                :color="roleColor(role)"
+                variant="tonal"
+                class="mr-1"
+              >{{ role }}</v-chip>
+            </div>
           </v-col>
           <v-col cols="auto">
-            <v-btn variant="text" size="small" @click="openEditDialog(p)">Edit</v-btn>
+            <v-btn
+              v-if="canAddAsClient(p)"
+              variant="text" size="small" color="secondary"
+              @click="openClientDialog(p)"
+            >Client</v-btn>
+            <v-btn
+              v-if="canAssignStaff && p.user_id && !(p.user && p.user.roles && (p.user.roles.includes('staff') || p.user.roles.includes('client'))) && !p.discarded_at"
+              variant="text" size="small" color="purple"
+              @click="assignStaff(p)"
+            >Staff</v-btn>
             <v-btn
               v-if="p.email && !p.user_id && !p.invitation_pending && !p.discarded_at"
               variant="text" size="small" color="primary"
@@ -56,6 +82,7 @@
               variant="text" size="small" color="warning"
               @click="revokeInvitation(p)"
             >Revoke Invite</v-btn>
+            <v-btn variant="text" size="small" @click="openEditDialog(p)">Edit</v-btn>
           </v-col>
         </v-row>
       </v-card>
@@ -80,6 +107,49 @@
       </v-card>
     </v-dialog>
 
+    <!-- Add Client dialog -->
+    <v-dialog v-model="clientDialogOpen" max-width="500" persistent>
+      <v-card>
+        <v-card-title class="pt-5 px-6">Add as Client Contact</v-card-title>
+        <v-card-text class="px-6">
+          <p class="text-body-2 text-medium-emphasis mb-4">
+            Enter the client name. If a matching client already exists it will be used;
+            otherwise a new client will be created.
+          </p>
+          <v-text-field
+            v-model="clientForm.organization_name"
+            label="Client / Organization Name *"
+            autofocus
+            @update:model-value="debouncedClientSearch"
+          />
+          <div v-if="clientSuggestions.length" class="mb-2">
+            <p class="text-body-2 text-warning mb-2">
+              Similar clients already exist — select one to avoid duplicates:
+            </p>
+            <v-chip
+              v-for="c in clientSuggestions"
+              :key="c.id"
+              class="mr-1 mb-1"
+              color="warning"
+              variant="outlined"
+              clickable
+              @click="selectClientSuggestion(c)"
+            >
+              {{ c.display_name }}
+              <span v-if="c.legal_name !== c.display_name" class="text-medium-emphasis ml-1">({{ c.legal_name }})</span>
+            </v-chip>
+          </div>
+        </v-card-text>
+        <v-card-actions class="px-6 pb-5">
+          <v-spacer />
+          <v-btn variant="text" @click="clientDialogOpen = false">Cancel</v-btn>
+          <v-btn v-if="forceCreate" color="warning" @click="addClient">Create New Anyway</v-btn>
+          <v-btn v-else-if="selectedExistingClient" color="primary" @click="addClient">Add to Existing Client</v-btn>
+          <v-btn v-else color="primary" @click="addClient">Confirm</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Delete confirmation dialog -->
     <v-dialog v-model="deleteDialogOpen" max-width="420">
       <v-card>
@@ -94,6 +164,21 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Invite after client dialog -->
+    <v-dialog v-model="inviteAfterClientDialogOpen" max-width="420">
+      <v-card>
+        <v-card-title class="pt-5 px-6">Invite as client user?</v-card-title>
+        <v-card-text class="px-6">
+          Would you like to send an invitation to <strong>{{ inviteAfterClientTarget?.display_name }}</strong> so they can log in?
+        </v-card-text>
+        <v-card-actions class="px-6 pb-5">
+          <v-spacer />
+          <v-btn variant="text" @click="inviteAfterClientDialogOpen = false">Not now</v-btn>
+          <v-btn color="primary" @click="inviteAfterClient">Send Invite</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
@@ -103,6 +188,7 @@ import { debounce } from 'lodash'
 import api from '../services/api.js'
 import { trackEvent } from '../services/ahoy.js'
 import PersonForm from '../components/PersonForm.vue'
+import useUserStore from '../stores/UserStore.js'
 
 const people = ref([])
 const loading = ref(false)
@@ -110,8 +196,18 @@ const searchQuery = ref('')
 const showActive = ref(true)
 const dialogOpen = ref(false)
 const deleteDialogOpen = ref(false)
+const clientDialogOpen = ref(false)
+const inviteAfterClientDialogOpen = ref(false)
+const inviteAfterClientTarget = ref(null)
 const editTarget = ref(null)
+const clientTarget = ref(null)
+const clientForm = ref({ organization_name: '' })
+const clientSuggestions = ref([])
+const forceCreate = ref(false)
+const selectedExistingClient = ref(false)
 const showSnackbar = inject('showSnackbar')
+const userStore = useUserStore()
+const canAssignStaff = userStore.hasRole('admin') || userStore.hasRole('manager')
 
 const blankForm = () => ({
   first_name: '',
@@ -267,6 +363,113 @@ const revokeInvitation = async (p) => {
   }
 }
 
+const roleColor = (role) => {
+  const colors = { admin: 'error', staff: 'purple', client: 'secondary', manager: 'indigo' }
+  return colors[role] || 'secondary'
+}
+
+const canAddAsClient = (p) => {
+  if (p.discarded_at || p.client_id != null) return false
+  if (!p.user_id) return true
+  if (p.user && (!p.user.roles || p.user.roles.length === 0)) return true
+  return false
+}
+
+const searchClientSuggestions = async (query) => {
+  if (!query || query.trim().length < 2) {
+    clientSuggestions.value = []
+    return
+  }
+  try {
+    const response = await api.get('/clients/similar', { params: { query } })
+    const q = query.trim().toLowerCase()
+    clientSuggestions.value = (response.data.clients || []).filter(c =>
+      c.display_name.toLowerCase() !== q && c.legal_name.toLowerCase() !== q
+    )
+  } catch {
+    clientSuggestions.value = []
+  }
+}
+
+const debouncedClientSearch = debounce((val) => {
+  forceCreate.value = false
+  selectedExistingClient.value = false
+  searchClientSuggestions(val)
+}, 300)
+
+const selectClientSuggestion = (c) => {
+  clientForm.value.organization_name = c.display_name
+  clientSuggestions.value = []
+  forceCreate.value = false
+  selectedExistingClient.value = true
+}
+
+const openClientDialog = (p) => {
+  clientTarget.value = p
+  clientForm.value = { organization_name: p.organization_name || '' }
+  clientSuggestions.value = []
+  forceCreate.value = false
+  selectedExistingClient.value = false
+  clientDialogOpen.value = true
+}
+
+const addClient = async () => {
+  // Always re-check at submit time in case debounce hasn't fired yet
+  if (!forceCreate.value) {
+    await searchClientSuggestions(clientForm.value.organization_name)
+    if (clientSuggestions.value.length) {
+      forceCreate.value = true
+      return
+    }
+  }
+  try {
+    const response = await api.post(`/people/${clientTarget.value.id}/add_client`, clientForm.value)
+    trackEvent('added client', { person_id: clientTarget.value.id })
+    showSnackbar([response.data.message || 'Person added as client contact'], 'success')
+    const addedPerson = response.data.person
+    clientDialogOpen.value = false
+    clientSuggestions.value = []
+    forceCreate.value = false
+    selectedExistingClient.value = false
+    fetchPeople(searchQuery.value)
+    if (addedPerson?.email && !addedPerson?.user_id && !addedPerson?.invitation_pending) {
+      inviteAfterClientTarget.value = addedPerson
+      inviteAfterClientDialogOpen.value = true
+    }
+    clientTarget.value = null
+  } catch (error) {
+    const e = error.response?.data?.errors || ['An unknown error occurred']
+    showSnackbar(e, 'error')
+  }
+}
+
+const inviteAfterClient = async () => {
+  const p = inviteAfterClientTarget.value
+  inviteAfterClientDialogOpen.value = false
+  inviteAfterClientTarget.value = null
+  try {
+    await api.post(`/people/${p.id}/invite`)
+    trackEvent('invited person', { person_id: p.id })
+    showSnackbar(['Invitation sent'], 'success')
+    fetchPeople(searchQuery.value)
+  } catch (error) {
+    const e = error.response?.data?.errors || ['An unknown error occurred']
+    showSnackbar(e, 'error')
+  }
+}
+
+const assignStaff = async (p) => {
+  try {
+    await api.post(`/people/${p.id}/assign_staff`)
+    trackEvent('assigned staff role', { person_id: p.id })
+    showSnackbar(['Staff role assigned'], 'success')
+    fetchPeople(searchQuery.value)
+  } catch (error) {
+    const e = error.response?.data?.errors || ['An unknown error occurred']
+    showSnackbar(e, 'error')
+  }
+}
+
 onMounted(() => fetchPeople())
 
 defineExpose({
@@ -290,6 +493,19 @@ defineExpose({
   deletePerson,
   reactivatePerson,
   invitePerson,
-  revokeInvitation
+  revokeInvitation,
+  canAddAsClient,
+  openClientDialog,
+  clientDialogOpen,
+  clientTarget,
+  clientForm,
+  addClient,
+  assignStaff,
+  clientSuggestions,
+  forceCreate,
+  selectedExistingClient,
+  searchClientSuggestions,
+  debouncedClientSearch,
+  selectClientSuggestion
 })
 </script>

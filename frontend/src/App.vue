@@ -54,6 +54,7 @@ provide('showSnackbar', showSnackbar)
       />
       <v-toolbar-title><a @click="goToDashboard">Influence</a></v-toolbar-title>
       <v-spacer></v-spacer>
+      <span v-if="isLoggedIn" class="text-body-2 mr-2">{{ userStore.user?.person_display_name || userStore.user?.email }}</span>
       <v-btn v-if="isLoggedIn" @click="logout">Log out</v-btn>
       <v-btn text v-else-if="!isLoggedIn && route.name !== 'Login'" @click="goToLogin">Log In</v-btn>
       <v-btn text v-else-if="route.name === 'Login'" @click="goToSignUp">Sign Up</v-btn>
