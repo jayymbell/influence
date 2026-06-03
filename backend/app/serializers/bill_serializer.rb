@@ -71,6 +71,17 @@ class BillSerializer
     bill.bill_people.size
   end
 
+  attribute :actions do |bill|
+    bill.bill_actions.map do |a|
+      {
+        id:             a.id,
+        action_date:    a.action_date,
+        description:    a.description,
+        classification: a.classification
+      }
+    end
+  end
+
   attribute :created_by do |bill|
     bill.created_by ? { id: bill.created_by.id, email: bill.created_by.email } : nil
   end

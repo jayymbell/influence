@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_05_23_000500) do
+ActiveRecord::Schema[8.0].define(version: 2026_06_03_033313) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -56,6 +56,19 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_23_000500) do
     t.index ["user_id"], name: "index_ahoy_visits_on_user_id"
     t.index ["visit_token"], name: "index_ahoy_visits_on_visit_token", unique: true
     t.index ["visitor_token", "started_at"], name: "index_ahoy_visits_on_visitor_token_and_started_at"
+  end
+
+  create_table "bill_actions", force: :cascade do |t|
+    t.bigint "bill_id", null: false
+    t.date "action_date", null: false
+    t.text "description", null: false
+    t.string "classification", default: [], array: true
+    t.integer "action_order"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["bill_id", "action_date", "description"], name: "index_bill_actions_uniqueness", unique: true
+    t.index ["bill_id", "action_order"], name: "index_bill_actions_on_bill_id_and_action_order"
+    t.index ["bill_id"], name: "index_bill_actions_on_bill_id"
   end
 
   create_table "bill_clients", force: :cascade do |t|
@@ -292,6 +305,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_05_23_000500) do
     t.index ["system_user"], name: "index_users_on_system_user"
   end
 
+  add_foreign_key "bill_actions", "bills"
   add_foreign_key "bill_clients", "bills"
   add_foreign_key "bill_clients", "clients"
   add_foreign_key "bill_clients", "users", column: "shared_by_id"

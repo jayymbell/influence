@@ -35,7 +35,7 @@ class BillsController < ApplicationController
     order_sql = Arel.sql(
       "NULLIF(REGEXP_REPLACE(COALESCE(bill_number, ''), '[^0-9]', '', 'g'), '')::bigint ASC NULLS LAST, bill_number ASC"
     )
-    @bills   = @bills.includes(:bill_issues, :bill_clients, :bill_people)
+    @bills   = @bills.includes(:bill_issues, :bill_clients, :bill_people, :bill_actions)
                      .order(order_sql)
                      .offset((page - 1) * per_page)
                      .limit(per_page)

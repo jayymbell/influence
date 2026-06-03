@@ -116,6 +116,7 @@ class BillImportService
       raise ExternalError, "Could not save imported bill: #{bill.errors.full_messages.join(', ')}"
     end
 
+    sync_actions(bill: bill, raw_actions: attrs[:raw_actions])
     [ bill, :created ]
   end
 
@@ -143,6 +144,7 @@ class BillImportService
       raise ExternalError, "Could not save refreshed bill: #{bill.errors.full_messages.join(', ')}"
     end
 
+    sync_actions(bill: bill, raw_actions: attrs[:raw_actions])
     bill
   end
 
@@ -169,6 +171,36 @@ class BillImportService
     end
 
     bill
+  end
+
+  # Sync bill actions from an Open States raw actions array.
+  # Replaces all existing BillAction records for the bill with the current set.
+  #
+  # @param bill [Bill]
+  # @param raw_actions [Array<Hash>]
+  def self.sync_actions(bill:, raw_actions:)
+    return if raw_actions.blank?
+
+    rows = raw_actions.each_with_index.map do |action, idx|
+      next if action["date"].blank? || action["description"].blank?
+
+      {
+        bill_id:       bill.id,
+        action_date:   Date.parse(action["date"]),
+        description:   action["description"].strip,
+        classification: Array(action["classification"]).reject(&:blank?),
+        action_order:  idx,
+        created_at:    Time.current,
+        updated_at:    Time.current
+      }
+    end.compact
+
+    return if rows.empty?
+
+    BillAction.transaction do
+      BillAction.where(bill_id: bill.id).delete_all
+      BillAction.insert_all(rows)
+    end
   end
 
   # Scrape the MN Revisor bill page for authors, follow each author bio link,
@@ -284,7 +316,8 @@ class BillImportService
       chamber:      map_chamber(raw.dig("from_organization", "classification")),
       session_year: extract_year(raw["session"]),
       source_url:   raw["openstates_url"],
-      status:       map_status(raw["actions"] || [])
+      status:       map_status(raw["actions"] || []),
+      raw_actions:  raw["actions"] || []
     }
   end
 

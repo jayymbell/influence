@@ -26,8 +26,10 @@ class Bill < ApplicationRecord
   has_many :bill_clients, dependent: :destroy
   has_many :clients,      through: :bill_clients
 
-  has_many :bill_people,  dependent: :destroy
-  has_many :people,       through: :bill_people
+  has_many :bill_people,   dependent: :destroy
+  has_many :people,        through: :bill_people
+
+  has_many :bill_actions,  dependent: :destroy
 
   validates :title, presence: true, length: { minimum: 2 }
   validates :status, presence: true

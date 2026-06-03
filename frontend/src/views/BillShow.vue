@@ -105,6 +105,7 @@
         <v-tab value="issues">Issues</v-tab>
         <v-tab value="clients">Clients</v-tab>
         <v-tab value="people">People</v-tab>
+        <v-tab value="activity">Activity</v-tab>
       </v-tabs>
       <v-divider />
 
@@ -246,6 +247,33 @@
             <p v-else class="text-medium-emphasis mt-4">No people added to this bill.</p>
           </template>
         </v-window-item>
+
+        <!-- Activity tab -->
+        <v-window-item value="activity">
+          <template v-if="bill.actions?.length">
+            <v-timeline density="compact" side="end" class="mt-2">
+              <v-timeline-item
+                v-for="action in bill.actions"
+                :key="action.id"
+                :dot-color="actionColor(action.classification)"
+                size="x-small"
+              >
+                <div class="d-flex align-center ga-2 flex-wrap">
+                  <span class="text-caption text-medium-emphasis text-no-wrap">{{ formatDate(action.action_date) }}</span>
+                  <span>{{ action.description }}</span>
+                  <v-chip
+                    v-for="cls in action.classification"
+                    :key="cls"
+                    size="x-small"
+                    variant="tonal"
+                    :color="actionColor([cls])"
+                  >{{ cls }}</v-chip>
+                </div>
+              </v-timeline-item>
+            </v-timeline>
+          </template>
+          <p v-else class="text-medium-emphasis mt-4">No activity recorded. Refresh the bill to sync from Open States.</p>
+        </v-window-item>
       </v-window>
     </template>
 
@@ -360,6 +388,24 @@ const statusColor = (status) => {
 }
 
 const chamberColor = (chamber) => chamber === 'house' ? 'blue-grey' : 'purple'
+
+const actionColor = (classifications) => {
+  const cls = classifications || []
+  if (cls.includes('became-law') || cls.includes('executive-signature')) return 'success'
+  if (cls.includes('executive-veto') || cls.includes('failure') || cls.includes('committee-failure')) return 'error'
+  if (cls.includes('passage')) return 'teal'
+  if (cls.includes('reading-3') || cls.includes('reading-2')) return 'orange'
+  if (cls.includes('committee-passage')) return 'cyan'
+  if (cls.includes('referral-committee')) return 'indigo'
+  if (cls.includes('introduced')) return 'blue'
+  return 'grey'
+}
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return ''
+  const d = new Date(dateStr + 'T00:00:00')
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
 
 const revisorUrl = computed(() => {
   if (!bill.value?.bill_number || !bill.value?.session_year) return null

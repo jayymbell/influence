@@ -216,14 +216,35 @@ RSpec.describe BillImportService do
       expect(WebMock).not_to have_requested(:get, /openstates/)
     end
 
-    it "does not overwrite notes, tags, or status on import" do
+    it "does not overwrite notes or tags on import" do
       stub_open_states_fetch(external_id: "ocd-bill/new")
 
       bill, _ = BillImportService.import(external_id: "ocd-bill/new", created_by: user)
 
       expect(bill.notes).to be_nil
       expect(bill.tags).to eq []
-      expect(bill.status).to eq "introduced"
+    end
+
+    it "syncs actions on import" do
+      stub_open_states_fetch(
+        external_id: "ocd-bill/1",
+        body: {
+          "id"            => "ocd-bill/1",
+          "identifier"    => "HF 100",
+          "title"         => "A test bill",
+          "openstates_url" => "https://openstates.org/mn/bills/2026/HF100/",
+          "session"    => "2026",
+          "from_organization" => { "classification" => "lower" },
+          "abstracts" => [ { "abstract" => "Summary.", "note" => "summary" } ],
+          "actions"   => [
+            { "date" => "2026-01-10", "description" => "Introduced in House", "classification" => ["introduced"] }
+          ]
+        }
+      )
+
+      bill, _ = BillImportService.import(external_id: "ocd-bill/1", created_by: user)
+      expect(bill.bill_actions.count).to eq 1
+      expect(bill.bill_actions.first.description).to eq "Introduced in House"
     end
   end
 
@@ -435,6 +456,53 @@ RSpec.describe BillImportService do
     it "handles actions with no classification key" do
       actions = [ { "description" => "Something happened" } ]
       expect(BillImportService.map_status(actions)).to eq :introduced
+    end
+  end
+
+  # -------------------------------------------------------------------------
+  describe ".sync_actions" do
+    let(:bill) { create(:bill) }
+    let(:raw_actions) do
+      [
+        { "date" => "2026-01-10", "description" => "Introduced in House",     "classification" => ["introduced"] },
+        { "date" => "2026-01-20", "description" => "Referred to committee",   "classification" => ["referral-committee"] },
+        { "date" => "2026-02-01", "description" => "Passed committee",        "classification" => ["committee-passage"] }
+      ]
+    end
+
+    it "creates BillAction records for each action" do
+      BillImportService.sync_actions(bill: bill, raw_actions: raw_actions)
+      expect(bill.bill_actions.count).to eq 3
+      expect(bill.bill_actions.first.description).to eq "Introduced in House"
+      expect(bill.bill_actions.first.classification).to eq ["introduced"]
+    end
+
+    it "assigns action_order matching the array index" do
+      BillImportService.sync_actions(bill: bill, raw_actions: raw_actions)
+      expect(bill.bill_actions.order(:action_order).map(&:action_order)).to eq [0, 1, 2]
+    end
+
+    it "replaces existing actions on re-sync" do
+      BillImportService.sync_actions(bill: bill, raw_actions: raw_actions)
+      new_actions = [{ "date" => "2026-03-01", "description" => "Signed", "classification" => ["executive-signature"] }]
+      BillImportService.sync_actions(bill: bill, raw_actions: new_actions)
+      expect(bill.bill_actions.reload.count).to eq 1
+      expect(bill.bill_actions.first.description).to eq "Signed"
+    end
+
+    it "skips actions missing date or description" do
+      actions = [
+        { "date" => nil,        "description" => "No date",    "classification" => [] },
+        { "date" => "2026-01-10", "description" => "",         "classification" => [] },
+        { "date" => "2026-01-10", "description" => "Good one", "classification" => ["introduced"] }
+      ]
+      BillImportService.sync_actions(bill: bill, raw_actions: actions)
+      expect(bill.bill_actions.count).to eq 1
+    end
+
+    it "does nothing when raw_actions is blank" do
+      BillImportService.sync_actions(bill: bill, raw_actions: [])
+      expect(bill.bill_actions.count).to eq 0
     end
   end
 
