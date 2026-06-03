@@ -22,6 +22,10 @@ class BillsController < ApplicationController
       @bills = @bills.where(id: BillClient.where(client_id: cid).select(:bill_id))
     end
 
+    if params[:watched].present?
+      @bills = @bills.where(id: BillWatch.where(user_id: current_user.id).select(:bill_id))
+    end
+
     if params[:query].present?
       q = "%#{params[:query].downcase}%"
       @bills = @bills.where(
@@ -35,7 +39,7 @@ class BillsController < ApplicationController
     order_sql = Arel.sql(
       "NULLIF(REGEXP_REPLACE(COALESCE(bill_number, ''), '[^0-9]', '', 'g'), '')::bigint ASC NULLS LAST, bill_number ASC"
     )
-    @bills   = @bills.includes(:bill_issues, :bill_clients, :bill_people, :bill_actions)
+    @bills   = @bills.includes(:bill_issues, :bill_clients, :bill_people, :bill_actions, :bill_watches)
                      .order(order_sql)
                      .offset((page - 1) * per_page)
                      .limit(per_page)
@@ -161,7 +165,7 @@ class BillsController < ApplicationController
   end
 
   def bill_data(bill)
-    BillSerializer.new(bill).serializable_hash[:data][:attributes]
+    BillSerializer.new(bill, params: { current_user: current_user }).serializable_hash[:data][:attributes]
   end
 
   def bill_params

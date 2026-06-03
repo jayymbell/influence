@@ -93,6 +93,14 @@ const billsApi = {
   importAuthors(id) {
     return api.post(`/bills/${id}/import_authors`)
   },
+
+  watchBill(id) {
+    return api.post(`/bills/${id}/watch`)
+  },
+
+  unwatchBill(id) {
+    return api.delete(`/bills/${id}/unwatch`)
+  },
 }
 
 export default billsApi

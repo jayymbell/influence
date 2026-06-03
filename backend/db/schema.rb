@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_06_03_033313) do
+ActiveRecord::Schema[8.0].define(version: 2026_06_03_034842) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -101,6 +101,16 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_03_033313) do
     t.datetime "updated_at", null: false
     t.index ["bill_id", "person_id"], name: "index_bill_people_on_bill_id_and_person_id", unique: true
     t.index ["person_id"], name: "index_bill_people_on_person_id"
+  end
+
+  create_table "bill_watches", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "bill_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["bill_id"], name: "index_bill_watches_on_bill_id"
+    t.index ["user_id", "bill_id"], name: "index_bill_watches_on_user_id_and_bill_id", unique: true
+    t.index ["user_id"], name: "index_bill_watches_on_user_id"
   end
 
   create_table "bills", force: :cascade do |t|
@@ -315,6 +325,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_06_03_033313) do
   add_foreign_key "bill_people", "bills"
   add_foreign_key "bill_people", "people"
   add_foreign_key "bill_people", "users", column: "added_by_id"
+  add_foreign_key "bill_watches", "bills"
+  add_foreign_key "bill_watches", "users"
   add_foreign_key "bills", "bills", column: "companion_bill_id"
   add_foreign_key "bills", "users", column: "created_by_id"
   add_foreign_key "bills", "users", column: "updated_by_id"

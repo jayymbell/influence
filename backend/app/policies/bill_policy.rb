@@ -41,6 +41,10 @@ class BillPolicy < ApplicationPolicy
     admin_or_staff? || manager_on_bill?
   end
 
+  def watch?
+    admin_or_staff? || user.manager?
+  end
+
   class Scope < ApplicationPolicy::Scope
     def resolve
       if user.admin? || user.staff?

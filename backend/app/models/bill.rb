@@ -31,6 +31,9 @@ class Bill < ApplicationRecord
 
   has_many :bill_actions,  dependent: :destroy
 
+  has_many :bill_watches,   dependent: :destroy
+  has_many :watchers,       through: :bill_watches, source: :user
+
   validates :title, presence: true, length: { minimum: 2 }
   validates :status, presence: true
   validate  :companion_bill_not_self

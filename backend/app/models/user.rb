@@ -15,6 +15,8 @@ class User < ApplicationRecord
   has_many :roles, through: :user_roles
   has_many :refresh_tokens, dependent: :destroy
   has_many :conversations, dependent: :destroy
+  has_many :bill_watches,  dependent: :destroy
+  has_many :watched_bills, through: :bill_watches, source: :bill
   has_one :person
 
   def active_for_authentication?

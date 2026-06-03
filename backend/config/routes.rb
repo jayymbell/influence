@@ -62,6 +62,8 @@ Rails.application.routes.draw do
       patch :link_external
       post  :refresh
       post  :import_authors
+      post   :watch,   to: 'bill_watches#create'
+      delete :unwatch, to: 'bill_watches#destroy'
     end
     resources :issues,  only: [:index, :create, :destroy], controller: 'bill_issues'
     resources :clients, only: [:index, :create, :destroy], controller: 'bill_clients'

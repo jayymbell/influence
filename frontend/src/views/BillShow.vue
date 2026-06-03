@@ -54,7 +54,24 @@
           </div>
         </v-col>
         <v-col cols="auto">
-          <v-btn variant="outlined" size="small" @click="openEditDialog">Edit</v-btn>
+          <v-btn
+            variant="outlined"
+            size="small"
+            :color="bill.watched_by_current_user ? 'primary' : undefined"
+            :loading="toggling"
+            @click="doToggleWatch"
+          >
+            <v-icon start size="small">{{ bill.watched_by_current_user ? 'mdi-eye-off' : 'mdi-eye' }}</v-icon>
+            {{ bill.watched_by_current_user ? 'Unwatch' : 'Watch' }}
+            <v-badge
+              v-if="bill.watchers_count > 0"
+              :content="bill.watchers_count"
+              color="primary"
+              inline
+              class="ml-1"
+            />
+          </v-btn>
+          <v-btn variant="outlined" size="small" class="ml-2" @click="openEditDialog">Edit</v-btn>
           <v-btn
             v-if="!bill.external_id"
             variant="outlined"
@@ -355,6 +372,7 @@ const editDialogOpen = ref(false)
 const linkModalOpen  = ref(false)
 const refreshing        = ref(false)
 const importingAuthors  = ref(false)
+const toggling          = ref(false)
 const issuesLoading = ref(false)
 const clientsLoading = ref(false)
 const peopleLoading = ref(false)
@@ -620,6 +638,28 @@ const doImportAuthors = async () => {
   }
 }
 
+const doToggleWatch = async () => {
+  toggling.value = true
+  try {
+    if (bill.value.watched_by_current_user) {
+      await billsApi.unwatchBill(bill.value.id)
+      bill.value.watched_by_current_user = false
+      bill.value.watchers_count = Math.max(0, (bill.value.watchers_count || 1) - 1)
+      showSnackbar(['No longer watching this bill.'], 'success')
+    } else {
+      await billsApi.watchBill(bill.value.id)
+      bill.value.watched_by_current_user = true
+      bill.value.watchers_count = (bill.value.watchers_count || 0) + 1
+      showSnackbar(['Now watching this bill.'], 'success')
+    }
+  } catch (error) {
+    const e = error.response?.data?.errors || ['An unknown error occurred']
+    showSnackbar(e, 'error')
+  } finally {
+    toggling.value = false
+  }
+}
+
 const onLinked = async () => {
   await fetchBill()
   showSnackbar(['Bill linked to Open States.'], 'success')
@@ -644,12 +684,12 @@ onMounted(async () => {
 })
 
 defineExpose({
-  bill, loading, activeTab, editDialogOpen, linkModalOpen, refreshing, form,
+  bill, loading, activeTab, editDialogOpen, linkModalOpen, refreshing, toggling, form,
   selectedIssue, selectedClient, selectedPerson,
   availableIssueOptions, availableClientOptions, availablePeopleOptions,
   fetchBill, openEditDialog, saveEdit,
   linkIssue, unlinkIssue, linkClient, unlinkClient, addPerson, removePerson,
-  doRefresh, onLinked, relativeTime,
+  doRefresh, doToggleWatch, onLinked, relativeTime,
   statusColor, chamberColor, formatStatus,
 })
 </script>
