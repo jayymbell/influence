@@ -17,6 +17,36 @@ class BillImportService
   API_KEY = (Rails.application.credentials.dig(:open_states_api_key) ||
              ENV["OPEN_STATES_API_KEY"]).freeze
 
+  # Maps Open States action classification strings to a priority and local status.
+  # Higher priority wins when multiple actions are present.
+  ACTION_CLASSIFICATION_PRIORITY = {
+    "became-law"          => 11,
+    "executive-signature" => 10,
+    "executive-veto"      =>  9,
+    "failure"             =>  8,
+    "committee-failure"   =>  8,
+    "passage"             =>  7,
+    "reading-3"           =>  6,
+    "reading-2"           =>  5,
+    "committee-passage"   =>  4,
+    "referral-committee"  =>  2,
+    "introduced"          =>  1
+  }.freeze
+
+  ACTION_CLASSIFICATION_STATUS = {
+    "became-law"          => :signed,
+    "executive-signature" => :signed,
+    "executive-veto"      => :vetoed,
+    "failure"             => :failed,
+    "committee-failure"   => :failed,
+    "passage"             => :passed_chamber,
+    "reading-3"           => :floor_vote,
+    "reading-2"           => :floor_vote,
+    "committee-passage"   => :passed_committee,
+    "referral-committee"  => :in_committee,
+    "introduced"          => :introduced
+  }.freeze
+
   class ExternalError < StandardError; end
 
   # Search Minnesota bills on Open States.
@@ -53,7 +83,7 @@ class BillImportService
   # @return [Hash] normalized bill attributes
   def self.fetch(external_id:)
     # Open States single-bill detail endpoint accepts the id directly
-    data = http_get("/bills/#{CGI.escape(external_id)}", { include: "abstracts" })
+    data = http_get("/bills/#{CGI.escape(external_id)}", { include: %w[abstracts actions] })
     normalize_bill(data)
   end
 
@@ -77,7 +107,7 @@ class BillImportService
       session_year:   attrs[:session_year],
       source_url:     attrs[:source_url],
       last_synced_at: Time.current,
-      status:         :introduced,
+      status:         attrs[:status],
       created_by:     created_by,
       updated_by:     created_by
     )
@@ -105,6 +135,7 @@ class BillImportService
       chamber:        attrs[:chamber],
       session_year:   attrs[:session_year],
       source_url:     attrs[:source_url],
+      status:         attrs[:status],
       last_synced_at: Time.current
     )
 
@@ -198,7 +229,8 @@ class BillImportService
     raise ExternalError, "Open States API key is not configured" if API_KEY.blank?
 
     uri = URI("#{OPEN_STATES_BASE_URL}#{path}")
-    uri.query = URI.encode_www_form(params.reject { |_, v| v.nil? })
+    pairs = params.reject { |_, v| v.nil? }.flat_map { |k, v| Array(v).map { |val| [k, val] } }
+    uri.query = URI.encode_www_form(pairs)
 
     http           = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl   = uri.scheme == "https"
@@ -251,7 +283,8 @@ class BillImportService
       description:  description,
       chamber:      map_chamber(raw.dig("from_organization", "classification")),
       session_year: extract_year(raw["session"]),
-      source_url:   raw["openstates_url"]
+      source_url:   raw["openstates_url"],
+      status:       map_status(raw["actions"] || [])
     }
   end
 
@@ -266,6 +299,25 @@ class BillImportService
     return nil if session_identifier.blank?
     match = session_identifier.match(/(\d{4})/)
     match ? match[1].to_i : nil
+  end
+
+  # Derive the most advanced local status from an Open States actions array.
+  def self.map_status(actions)
+    return :introduced if actions.blank?
+
+    best_priority = 0
+    best_status   = :introduced
+
+    actions.each do |action|
+      (action["classification"] || []).each do |cls|
+        priority = ACTION_CLASSIFICATION_PRIORITY[cls]
+        next unless priority && priority > best_priority
+        best_priority = priority
+        best_status   = ACTION_CLASSIFICATION_STATUS[cls]
+      end
+    end
+
+    best_status
   end
 
   # Build the MN Revisor bill URL. Returns nil if the identifier can't be parsed.

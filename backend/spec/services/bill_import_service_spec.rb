@@ -61,7 +61,8 @@ RSpec.describe BillImportService do
       "session"    => "2026",
       "from_organization" => { "classification" => "lower" },
       "subject"    => ["Education", "Finance"],
-      "abstracts" => [ { "abstract" => "This bill does something important.", "note" => "summary" } ]
+      "abstracts" => [ { "abstract" => "This bill does something important.", "note" => "summary" } ],
+      "actions"   => []
     }
     escaped = CGI.escape(external_id)
     stub_request(:get, Regexp.new("v3\\.openstates\\.org/bills/#{Regexp.escape(escaped)}"))
@@ -241,7 +242,8 @@ RSpec.describe BillImportService do
           "session"    => "2026",
           "from_organization" => { "classification" => "upper" },
           "subject"    => ["Education"],
-          "abstracts" => [ { "abstract" => "Refreshed description.", "note" => "summary" } ]
+          "abstracts" => [ { "abstract" => "Refreshed description.", "note" => "summary" } ],
+          "actions"   => []
         }
       )
 
@@ -254,14 +256,38 @@ RSpec.describe BillImportService do
       expect(refreshed.last_synced_at).not_to be_nil
     end
 
-    it "does NOT overwrite notes, tags, status, or companion_bill_id" do
+    it "updates status from Open States actions" do
+      stub_open_states_fetch(
+        external_id: "ocd-bill/1",
+        body: {
+          "id"            => "ocd-bill/1",
+          "identifier"    => "HF 100",
+          "title"         => "A test bill",
+          "openstates_url" => "https://openstates.org/mn/bills/2026/HF100/",
+          "session"    => "2026",
+          "from_organization" => { "classification" => "lower" },
+          "abstracts" => [],
+          "actions"   => [
+            { "date" => "2026-01-10", "description" => "Introduced",        "classification" => ["introduced"] },
+            { "date" => "2026-01-20", "description" => "Referred",          "classification" => ["referral-committee"] },
+            { "date" => "2026-02-01", "description" => "Passed committee",  "classification" => ["committee-passage"] },
+            { "date" => "2026-03-01", "description" => "Signed by Governor", "classification" => ["executive-signature"] }
+          ]
+        }
+      )
+      stub_revisor(status: 500)
+
+      refreshed = BillImportService.refresh(bill: bill)
+      expect(refreshed.status).to eq "signed"
+    end
+
+    it "does NOT overwrite notes, tags, or companion_bill_id" do
       stub_open_states_fetch(external_id: "ocd-bill/1")
 
       refreshed = BillImportService.refresh(bill: bill)
 
       expect(refreshed.notes).to eq "kept"
       expect(refreshed.tags).to eq ["kept"]
-      expect(refreshed.status).to eq "signed"
     end
 
     it "raises ExternalError if bill has no external_id" do
@@ -367,6 +393,48 @@ RSpec.describe BillImportService do
         .to_return(status: 200, body: REVISOR_HTML_WITH_DESC, headers: { "Content-Type" => "text/html" })
       result = BillImportService.scrape_revisor_description("HF 100", "2025-2026")
       expect(result).to eq "This is the Revisor description."
+    end
+  end
+
+  # -------------------------------------------------------------------------
+  describe ".map_status" do
+    it "returns :introduced when actions is empty" do
+      expect(BillImportService.map_status([])).to eq :introduced
+    end
+
+    it "returns the highest-priority status across all actions" do
+      actions = [
+        { "classification" => ["introduced"] },
+        { "classification" => ["referral-committee"] },
+        { "classification" => ["committee-passage"] },
+        { "classification" => ["passage"] }
+      ]
+      expect(BillImportService.map_status(actions)).to eq :passed_chamber
+    end
+
+    it "maps executive-signature to :signed" do
+      actions = [ { "classification" => ["executive-signature"] } ]
+      expect(BillImportService.map_status(actions)).to eq :signed
+    end
+
+    it "maps executive-veto to :vetoed" do
+      actions = [ { "classification" => ["executive-veto"] } ]
+      expect(BillImportService.map_status(actions)).to eq :vetoed
+    end
+
+    it "maps failure to :failed" do
+      actions = [ { "classification" => ["failure"] } ]
+      expect(BillImportService.map_status(actions)).to eq :failed
+    end
+
+    it "ignores unknown classification strings" do
+      actions = [ { "classification" => ["some-unknown-action"] } ]
+      expect(BillImportService.map_status(actions)).to eq :introduced
+    end
+
+    it "handles actions with no classification key" do
+      actions = [ { "description" => "Something happened" } ]
+      expect(BillImportService.map_status(actions)).to eq :introduced
     end
   end
 
