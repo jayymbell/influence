@@ -3,6 +3,10 @@
 class BillNotePolicy < ApplicationPolicy
   # record is a BillNote
 
+  def show?
+    record.shared? || record.user_id == user.id
+  end
+
   def update?
     admin_or_staff? || record.user_id == user.id
   end

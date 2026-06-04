@@ -136,6 +136,46 @@ RSpec.describe 'Bill Notes API', type: :request do
   end
 
   # ---------------------------------------------------------------------------
+  # GET /bills/:bill_id/notes/:id
+  # ---------------------------------------------------------------------------
+  describe 'GET /bills/:bill_id/notes/:id' do
+    it 'returns a shared note to any authenticated user with bill access' do
+      note = create(:bill_note, :shared, bill: bill, user: staff, title: 'Shared note')
+      manager = create(:user, :with_role, role_name: 'manager')
+
+      get "/bills/#{bill.id}/notes/#{note.id}", headers: auth_headers_for(manager)
+
+      expect(response).to have_http_status(:ok)
+      expect(json_response['note']['id']).to eq(note.id)
+      expect(json_response['note']['shared']).to be true
+    end
+
+    it 'returns an unshared note to its author' do
+      note = create(:bill_note, bill: bill, user: admin, title: 'Private note')
+
+      get "/bills/#{bill.id}/notes/#{note.id}", headers: auth_headers_for(admin)
+
+      expect(response).to have_http_status(:ok)
+      expect(json_response['note']['id']).to eq(note.id)
+    end
+
+    it 'denies access to an unshared note for non-authors' do
+      manager = create(:user, :with_role, role_name: 'manager')
+      note = create(:bill_note, bill: bill, user: admin, title: 'Private note')
+
+      get "/bills/#{bill.id}/notes/#{note.id}", headers: auth_headers_for(manager)
+
+      expect(response).to have_http_status(:forbidden)
+    end
+
+    it 'returns 401 for unauthenticated requests' do
+      note = create(:bill_note, :shared, bill: bill, user: admin)
+      get "/bills/#{bill.id}/notes/#{note.id}"
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
+  # ---------------------------------------------------------------------------
   # GET /bills/:bill_id/notes — visibility
   # ---------------------------------------------------------------------------
   describe 'GET /bills/:bill_id/notes — visibility' do

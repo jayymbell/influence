@@ -68,7 +68,7 @@ Rails.application.routes.draw do
     resources :issues,  only: [:index, :create, :destroy], controller: 'bill_issues'
     resources :clients, only: [:index, :create, :destroy], controller: 'bill_clients'
     resources :people,  only: [:index, :create, :destroy], controller: 'bill_people'
-    resources :notes, only: [:index, :create, :update, :destroy], controller: 'bill_notes' do
+    resources :notes, only: [:index, :show, :create, :update, :destroy], controller: 'bill_notes' do
       member do
         patch :share
         patch :unshare

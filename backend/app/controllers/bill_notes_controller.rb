@@ -3,7 +3,13 @@
 class BillNotesController < ApplicationController
   before_action :authenticate_user!
   before_action :set_bill
-  before_action :set_note, only: [:update, :destroy, :share, :unshare, :pin, :unpin]
+  before_action :set_note, only: [:show, :update, :destroy, :share, :unshare, :pin, :unpin]
+
+  # GET /bills/:bill_id/notes/:id
+  def show
+    authorize @note, :show?
+    render_success(data: { note: note_data(@note) })
+  end
 
   # GET /bills/:bill_id/notes
   def index

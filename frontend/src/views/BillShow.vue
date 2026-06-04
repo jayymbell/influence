@@ -399,6 +399,14 @@
                         <v-icon size="small" class="mr-1">mdi-eye-off-outline</v-icon>
                         Unshare
                       </v-btn>
+                      <v-btn
+                        variant="text"
+                        size="small"
+                        :title="'Permalink to this note'"
+                        :to="{ name: 'BillNoteShow', params: { billId: bill.id, noteId: note.id } }"
+                      >
+                        <v-icon size="small">mdi-link-variant</v-icon>
+                      </v-btn>
                       <v-btn variant="text" size="small" @click="startEditNote(note)">Edit</v-btn>
                       <v-btn variant="text" size="small" color="error" @click="deleteNote(note.id)">Delete</v-btn>
                     </template>

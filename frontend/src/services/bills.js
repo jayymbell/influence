@@ -107,6 +107,10 @@ const billsApi = {
     return api.get(`/bills/${billId}/notes`)
   },
 
+  getNote(billId, noteId) {
+    return api.get(`/bills/${billId}/notes/${noteId}`)
+  },
+
   createNote(billId, data) {
     return api.post(`/bills/${billId}/notes`, { note: data })
   },
