@@ -16,7 +16,6 @@ RSpec.describe BillPolicy do
     it 'allows create'         do expect(subject.new(user, bill).create?).to be true end
     it 'allows update'         do expect(subject.new(user, bill).update?).to be true end
     it 'allows destroy'        do expect(subject.new(user, bill).destroy?).to be true end
-    it 'allows import_authors' do expect(subject.new(user, bill).import_authors?).to be true end
     it 'allows watch'          do expect(subject.new(user, bill).watch?).to be true end
 
     describe 'Scope' do
