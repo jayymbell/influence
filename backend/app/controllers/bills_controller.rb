@@ -2,7 +2,11 @@
 
 class BillsController < ApplicationController
   before_action :authenticate_user!
-  before_action :set_bill, only: %i[show update destroy]
+  before_action :set_bill, only: %i[show update destroy link_external refresh import_authors]
+
+  rescue_from BillImportService::ExternalError do |e|
+    render_error(errors: [ e.message ], message: "External service error.", status: :bad_gateway)
+  end
 
   # GET /bills
   def index
@@ -18,6 +22,10 @@ class BillsController < ApplicationController
       @bills = @bills.where(id: BillClient.where(client_id: cid).select(:bill_id))
     end
 
+    if params[:watched].present?
+      @bills = @bills.where(id: BillWatch.where(user_id: current_user.id).select(:bill_id))
+    end
+
     if params[:query].present?
       q = "%#{params[:query].downcase}%"
       @bills = @bills.where(
@@ -28,8 +36,11 @@ class BillsController < ApplicationController
 
     page     = (params[:page] || 1).to_i
     per_page = (params[:per_page] || 25).to_i
-    @bills   = @bills.includes(:bill_issues, :bill_clients, :bill_people)
-                     .order(title: :asc)
+    order_sql = Arel.sql(
+      "NULLIF(REGEXP_REPLACE(COALESCE(bill_number, ''), '[^0-9]', '', 'g'), '')::bigint ASC NULLS LAST, bill_number ASC"
+    )
+    @bills   = @bills.includes(:bill_issues, :bill_clients, :bill_people, :bill_actions, :bill_watches)
+                     .order(order_sql)
                      .offset((page - 1) * per_page)
                      .limit(per_page)
 
@@ -76,6 +87,77 @@ class BillsController < ApplicationController
     render_success(message: 'Bill deactivated.')
   end
 
+  # GET /bills/search?q=...
+  def search
+    authorize Bill, :search?
+    query    = params[:q].to_s.strip
+    page     = (params[:page] || 1).to_i
+    per_page = (params[:per_page] || 20).to_i
+
+    if query.blank?
+      return render_error(errors: [ "q parameter is required" ], message: "Search query missing.")
+    end
+
+    result = BillImportService.search(query: query, page: page, per_page: per_page)
+    render_success(data: result, message: "Search results found.")
+  end
+
+  # POST /bills/import
+  def import
+    authorize Bill, :import?
+    external_id = params[:external_id].to_s.strip
+
+    if external_id.blank?
+      return render_error(errors: [ "external_id is required" ], message: "Import failed.")
+    end
+
+    bill, status_sym = BillImportService.import(external_id: external_id, created_by: current_user)
+    http_status = status_sym == :created ? :created : :ok
+    render_success(data: { bill: bill_data(bill) }, message: "Bill #{status_sym == :created ? 'imported' : 'already exists'}.", status: http_status)
+  end
+
+  # PATCH /bills/:id/link_external
+  def link_external
+    authorize @bill, :link_external?
+    external_id = params[:external_id].to_s.strip
+
+    if external_id.blank?
+      return render_error(errors: [ "external_id is required" ], message: "Link failed.")
+    end
+
+    bill = BillImportService.link(bill: @bill, external_id: external_id)
+    render_success(data: { bill: bill_data(bill) }, message: "Bill linked to external record.")
+  rescue BillImportService::ExternalError => e
+    render_error(errors: [ e.message ], message: "Link failed.", status: :unprocessable_content)
+  end
+
+  # POST /bills/:id/refresh
+  def refresh
+    authorize @bill, :refresh?
+
+    if @bill.external_id.blank?
+      return render_error(errors: [ "Bill is not linked to an external record" ], message: "Refresh failed.")
+    end
+
+    bill = BillImportService.refresh(bill: @bill)
+    render_success(data: { bill: bill_data(bill) }, message: "Bill refreshed.")
+  end
+
+  # POST /bills/:id/import_authors
+  def import_authors
+    authorize @bill, :import_authors?
+
+    result = BillImportService.scrape_authors(bill: @bill, created_by: current_user)
+    render_success(
+      data: {
+        added:   result[:added].map   { |p| { id: p.id, display_name: p.display_name } },
+        skipped: result[:skipped].map { |p| { id: p.id, display_name: p.display_name } },
+        errors:  result[:errors]
+      },
+      message: "Authors imported: #{result[:added].size} added, #{result[:skipped].size} already linked."
+    )
+  end
+
   private
 
   def set_bill
@@ -83,7 +165,7 @@ class BillsController < ApplicationController
   end
 
   def bill_data(bill)
-    BillSerializer.new(bill).serializable_hash[:data][:attributes]
+    BillSerializer.new(bill, params: { current_user: current_user }).serializable_hash[:data][:attributes]
   end
 
   def bill_params

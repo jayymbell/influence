@@ -11,11 +11,13 @@ RSpec.describe BillPolicy do
   context 'for admin users' do
     let(:user) { create(:user, :admin) }
 
-    it 'allows index'   do expect(subject.new(user, Bill).index?).to be true end
-    it 'allows show'    do expect(subject.new(user, bill).show?).to be true end
-    it 'allows create'  do expect(subject.new(user, bill).create?).to be true end
-    it 'allows update'  do expect(subject.new(user, bill).update?).to be true end
-    it 'allows destroy' do expect(subject.new(user, bill).destroy?).to be true end
+    it 'allows index'          do expect(subject.new(user, Bill).index?).to be true end
+    it 'allows show'           do expect(subject.new(user, bill).show?).to be true end
+    it 'allows create'         do expect(subject.new(user, bill).create?).to be true end
+    it 'allows update'         do expect(subject.new(user, bill).update?).to be true end
+    it 'allows destroy'        do expect(subject.new(user, bill).destroy?).to be true end
+    it 'allows import_authors' do expect(subject.new(user, bill).import_authors?).to be true end
+    it 'allows watch'          do expect(subject.new(user, bill).watch?).to be true end
 
     describe 'Scope' do
       it 'returns all bills' do
@@ -34,6 +36,7 @@ RSpec.describe BillPolicy do
     it 'allows create'  do expect(subject.new(user, bill).create?).to be true end
     it 'allows update'  do expect(subject.new(user, bill).update?).to be true end
     it 'allows destroy' do expect(subject.new(user, bill).destroy?).to be true end
+    it 'allows watch'   do expect(subject.new(user, bill).watch?).to be true end
 
     describe 'Scope' do
       it 'returns all bills' do
@@ -57,7 +60,7 @@ RSpec.describe BillPolicy do
     it 'allows create'  do expect(subject.new(user, bill).create?).to be true end
     it 'allows update'  do expect(subject.new(user, bill).update?).to be true end
     it 'allows destroy' do expect(subject.new(user, bill).destroy?).to be true end
-
+    it 'allows watch'   do expect(subject.new(user, bill).watch?).to be true end
     describe 'Scope' do
       it 'returns only bills linked to their clients' do
         other_client = create(:client)
@@ -86,5 +89,12 @@ RSpec.describe BillPolicy do
     it 'denies index'  do expect(subject.new(user, Bill).index?).to be false end
     it 'denies show'   do expect(subject.new(user, bill).show?).to be false end
     it 'denies create' do expect(subject.new(user, bill).create?).to be false end
+    it 'denies watch'  do expect(subject.new(user, bill).watch?).to be false end
+  end
+
+  context 'for system users' do
+    let(:user) { create(:user, :system_user) }
+
+    it 'denies watch' do expect(subject.new(user, bill).watch?).to be false end
   end
 end

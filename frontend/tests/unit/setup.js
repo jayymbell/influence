@@ -24,6 +24,8 @@ export const createTestRouter = () => {
     { path: '/clients/:id', name: 'ClientShow', component: { template: '<div>ClientShow</div>' } },
     { path: '/issues', name: 'Issues', component: { template: '<div>Issues</div>' } },
     { path: '/issues/:id', name: 'IssueShow', component: { template: '<div>IssueShow</div>' } },
+    { path: '/bills', name: 'Bills', component: { template: '<div>Bills</div>' } },
+    { path: '/bills/:id', name: 'BillShow', component: { template: '<div>BillShow</div>' } },
     { path: '/account-setup', name: 'AccountSetup', component: { template: '<div>AccountSetup</div>' } },
     { path: '/invite/accept', name: 'InviteAccept', component: { template: '<div>InviteAccept</div>' } }
   ]

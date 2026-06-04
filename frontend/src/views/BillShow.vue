@@ -43,6 +43,9 @@
               class="mr-1"
             >{{ tag }}</v-chip>
           </div>
+          <div v-if="revisorUrl" class="mt-1 text-body-2">
+            <a :href="revisorUrl" target="_blank" rel="noopener noreferrer">MN Revisor ↗</a>
+          </div>
           <div v-if="bill.companion_bill" class="mt-1 text-body-2 text-medium-emphasis">
             Companion:
             <router-link :to="{ name: 'BillShow', params: { id: bill.companion_bill.id } }">
@@ -51,19 +54,62 @@
           </div>
         </v-col>
         <v-col cols="auto">
-          <v-btn variant="outlined" size="small" @click="openEditDialog">Edit</v-btn>
+          <v-btn
+            variant="outlined"
+            size="small"
+            :color="bill.watched_by_current_user ? 'primary' : undefined"
+            :loading="toggling"
+            @click="doToggleWatch"
+          >
+            <v-icon start size="small">{{ bill.watched_by_current_user ? 'mdi-eye-off' : 'mdi-eye' }}</v-icon>
+            {{ bill.watched_by_current_user ? 'Unwatch' : 'Watch' }}
+            <v-badge
+              v-if="bill.watchers_count > 0"
+              :content="bill.watchers_count"
+              color="primary"
+              inline
+              class="ml-1"
+            />
+          </v-btn>
+          <v-btn variant="outlined" size="small" class="ml-2" @click="openEditDialog">Edit</v-btn>
+          <v-btn
+            v-if="!bill.external_id"
+            variant="outlined"
+            size="small"
+            class="ml-2"
+            @click="linkModalOpen = true"
+          >Link to Open States</v-btn>
+          <template v-else>
+            <v-btn
+              variant="outlined"
+              size="small"
+              class="ml-2"
+              :loading="refreshing"
+              @click="doRefresh"
+            >Refresh</v-btn>
+            <v-btn
+              variant="outlined"
+              size="small"
+              class="ml-2"
+              :loading="importingAuthors"
+              @click="doImportAuthors"
+            >Import Authors</v-btn>
+            <v-tooltip :text="bill.last_synced_at">
+              <template #activator="{ props: tooltipProps }">
+                <span v-bind="tooltipProps" class="ml-2 text-caption text-medium-emphasis" style="cursor:default">
+                  Synced {{ relativeTime(bill.last_synced_at) }}
+                </span>
+              </template>
+            </v-tooltip>
+          </template>
         </v-col>
       </v-row>
 
-      <!-- Description / Notes -->
-      <v-row v-if="bill.description || bill.notes" class="mt-2">
-        <v-col v-if="bill.description" cols="12" md="6">
+      <!-- Description -->
+      <v-row v-if="bill.description" class="mt-2">
+        <v-col cols="12">
           <p class="text-body-2 text-medium-emphasis mb-1">Description</p>
           <p class="text-body-1">{{ bill.description }}</p>
-        </v-col>
-        <v-col v-if="bill.notes" cols="12" md="6">
-          <p class="text-body-2 text-medium-emphasis mb-1">Notes</p>
-          <p class="text-body-1">{{ bill.notes }}</p>
         </v-col>
       </v-row>
 
@@ -72,6 +118,11 @@
         <v-tab value="issues">Issues</v-tab>
         <v-tab value="clients">Clients</v-tab>
         <v-tab value="people">People</v-tab>
+        <v-tab value="activity">Activity</v-tab>
+        <v-tab value="notes">
+          Notes
+          <v-badge v-if="notes.length" :content="notes.length" color="primary" inline class="ml-1" />
+        </v-tab>
       </v-tabs>
       <v-divider />
 
@@ -213,6 +264,169 @@
             <p v-else class="text-medium-emphasis mt-4">No people added to this bill.</p>
           </template>
         </v-window-item>
+
+        <!-- Activity tab -->
+        <v-window-item value="activity">
+          <template v-if="bill.actions?.length">
+            <v-timeline density="compact" side="end" class="mt-2">
+              <v-timeline-item
+                v-for="action in bill.actions"
+                :key="action.id"
+                :dot-color="actionColor(action.classification)"
+                size="x-small"
+              >
+                <div class="d-flex align-center ga-2 flex-wrap">
+                  <span class="text-caption text-medium-emphasis text-no-wrap">{{ formatDate(action.action_date) }}</span>
+                  <span>{{ action.description }}</span>
+                  <v-chip
+                    v-for="cls in action.classification"
+                    :key="cls"
+                    size="x-small"
+                    variant="tonal"
+                    :color="actionColor([cls])"
+                  >{{ cls }}</v-chip>
+                </div>
+              </v-timeline-item>
+            </v-timeline>
+          </template>
+          <p v-else class="text-medium-emphasis mt-4">No activity recorded. Refresh the bill to sync from Open States.</p>
+        </v-window-item>
+
+        <!-- Notes tab -->
+        <v-window-item value="notes">
+          <!-- New note form -->
+          <v-card variant="outlined" class="mb-4">
+            <v-card-text class="pb-2">
+              <v-text-field
+                v-model="newNoteTitle"
+                label="Title (optional)"
+                density="compact"
+                variant="outlined"
+                class="mb-3"
+                hide-details
+              />
+              <TiptapEditor
+                v-model="newNoteContent"
+                placeholder="Write a note…"
+              />
+            </v-card-text>
+            <v-card-actions class="px-4 pb-3">
+              <v-spacer />
+              <v-btn
+                color="primary"
+                :disabled="!newNoteContent || newNoteContent === '<p></p>'"
+                :loading="savingNote"
+                @click="createNote"
+              >Add Note</v-btn>
+            </v-card-actions>
+          </v-card>
+
+          <!-- Notes list -->
+          <template v-if="notesLoading">
+            <v-skeleton-loader v-for="n in 2" :key="n" type="article" class="mb-3" />
+          </template>
+          <template v-else-if="notes.length">
+            <v-card
+              v-for="note in notes"
+              :key="note.id"
+              variant="outlined"
+              class="mb-3"
+            >
+              <v-card-text>
+                <div class="d-flex align-center mb-2">
+                  <div class="flex-grow-1">
+                    <template v-if="editingNoteId !== note.id">
+                      <span v-if="note.title" class="text-subtitle-2 font-weight-bold mr-2">{{ note.title }}</span>
+                      <span class="text-caption text-medium-emphasis">
+                        {{ note.author }} · {{ formatDateTime(note.created_at) }}
+                      </span>
+                      <v-chip
+                        v-if="note.pinned"
+                        size="x-small"
+                        color="warning"
+                        variant="tonal"
+                        class="ml-2"
+                        prepend-icon="mdi-pin"
+                      >Pinned</v-chip>
+                      <v-chip
+                        v-if="note.shared"
+                        size="x-small"
+                        color="primary"
+                        variant="tonal"
+                        class="ml-2"
+                      >Shared</v-chip>
+                    </template>
+                    <template v-else>
+                      <v-text-field
+                        v-model="editNoteTitle"
+                        label="Title (optional)"
+                        density="compact"
+                        variant="outlined"
+                        hide-details
+                        class="mb-2"
+                      />
+                    </template>
+                  </div>
+                  <div class="ml-2 flex-shrink-0">
+                    <template v-if="editingNoteId !== note.id">
+                      <v-btn
+                        v-if="canPin && note.shared"
+                        variant="text"
+                        size="small"
+                        :title="note.pinned ? 'Unpin note' : 'Pin to top for everyone'"
+                        @click="doToggleNotePin(note)"
+                      >
+                        <v-icon size="small" class="mr-1">{{ note.pinned ? 'mdi-pin-off-outline' : 'mdi-pin-outline' }}</v-icon>
+                        {{ note.pinned ? 'Unpin' : 'Pin' }}
+                      </v-btn>
+                      <v-btn
+                        v-if="!note.shared"
+                        variant="text"
+                        size="small"
+                        title="Share with others who have bill access"
+                        @click="doToggleNoteShare(note)"
+                      >
+                        <v-icon size="small" class="mr-1">mdi-share-variant-outline</v-icon>
+                        Share
+                      </v-btn>
+                      <v-btn
+                        v-if="note.shared && (isAdmin || note.author_id === userStore.user?.id)"
+                        variant="text"
+                        size="small"
+                        title="Unshare — make private"
+                        @click="doToggleNoteShare(note)"
+                      >
+                        <v-icon size="small" class="mr-1">mdi-eye-off-outline</v-icon>
+                        Unshare
+                      </v-btn>
+                      <v-btn
+                        variant="text"
+                        size="small"
+                        :title="'Permalink to this note'"
+                        :to="{ name: 'BillNoteShow', params: { billId: bill.id, noteId: note.id } }"
+                      >
+                        <v-icon size="small">mdi-link-variant</v-icon>
+                      </v-btn>
+                      <v-btn variant="text" size="small" @click="startEditNote(note)">Edit</v-btn>
+                      <v-btn variant="text" size="small" color="error" @click="deleteNote(note.id)">Delete</v-btn>
+                    </template>
+                    <template v-else>
+                      <v-btn variant="text" size="small" color="primary" :loading="savingNote" @click="saveEditNote(note.id)">Save</v-btn>
+                      <v-btn variant="text" size="small" @click="cancelEditNote">Cancel</v-btn>
+                    </template>
+                  </div>
+                </div>
+                <TiptapEditor
+                  v-if="editingNoteId === note.id"
+                  v-model="editNoteContent"
+                />
+                <!-- eslint-disable-next-line vue/no-v-html -->
+                <div v-else class="note-content" v-html="note.content" />
+              </v-card-text>
+            </v-card>
+          </template>
+          <p v-else class="text-medium-emphasis mt-4">No notes yet. Add one above.</p>
+        </v-window-item>
       </v-window>
     </template>
 
@@ -245,9 +459,6 @@
               <v-textarea v-model="form.description" label="Description" rows="3" auto-grow />
             </v-col>
             <v-col cols="12">
-              <v-textarea v-model="form.notes" label="Notes" rows="2" auto-grow />
-            </v-col>
-            <v-col cols="12">
               <v-combobox
                 v-model="form.tags"
                 label="Tags"
@@ -266,22 +477,50 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Open States search/link modal -->
+    <BillSearchModal
+      v-model="linkModalOpen"
+      mode="link"
+      :bill-id="bill?.id"
+      @linked="onLinked"
+    />
   </v-container>
 </template>
 
 <script setup>
-import { onMounted, ref, inject } from 'vue'
+import { onMounted, ref, inject, computed } from 'vue'
 import { useRoute } from 'vue-router'
+import useUserStore from '../stores/UserStore.js'
 import billsApi from '../services/bills.js'
 import api from '../services/api.js'
+import BillSearchModal from '../components/BillSearchModal.vue'
+import TiptapEditor from '../components/TiptapEditor.vue'
 
 const route = useRoute()
 const showSnackbar = inject('showSnackbar')
+const userStore = useUserStore()
+const canPin = computed(() => userStore.hasRole('admin') || userStore.hasRole('staff'))
+const isAdmin = computed(() => userStore.hasRole('admin'))
 
 const bill = ref(null)
 const loading = ref(false)
 const activeTab = ref('issues')
 const editDialogOpen = ref(false)
+const linkModalOpen  = ref(false)
+const refreshing        = ref(false)
+const importingAuthors  = ref(false)
+const toggling          = ref(false)
+
+// Notes
+const notes          = ref([])
+const notesLoading   = ref(false)
+const savingNote     = ref(false)
+const newNoteTitle   = ref('')
+const newNoteContent = ref('')
+const editingNoteId  = ref(null)
+const editNoteTitle  = ref('')
+const editNoteContent = ref('')
 const issuesLoading = ref(false)
 const clientsLoading = ref(false)
 const peopleLoading = ref(false)
@@ -315,6 +554,37 @@ const statusColor = (status) => {
 }
 
 const chamberColor = (chamber) => chamber === 'house' ? 'blue-grey' : 'purple'
+
+const actionColor = (classifications) => {
+  const cls = classifications || []
+  if (cls.includes('became-law') || cls.includes('executive-signature')) return 'success'
+  if (cls.includes('executive-veto') || cls.includes('failure') || cls.includes('committee-failure')) return 'error'
+  if (cls.includes('passage')) return 'teal'
+  if (cls.includes('reading-3') || cls.includes('reading-2')) return 'orange'
+  if (cls.includes('committee-passage')) return 'cyan'
+  if (cls.includes('referral-committee')) return 'indigo'
+  if (cls.includes('introduced')) return 'blue'
+  return 'grey'
+}
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return ''
+  const d = new Date(dateStr + 'T00:00:00')
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+const revisorUrl = computed(() => {
+  if (!bill.value?.bill_number || !bill.value?.session_year) return null
+  const m = bill.value.bill_number.trim().match(/^([A-Za-z]+)\s*(\d+)$/)
+  if (!m) return null
+  const type   = m[1].toUpperCase()
+  const number = m[2]
+  const year   = Number(bill.value.session_year)
+  const oddYear    = year % 2 === 0 ? year - 1 : year
+  const legislature = 94 - ((2025 - oddYear) / 2)
+  const body = bill.value.chamber === 'senate' ? 'senate' : 'house'
+  return `https://www.revisor.mn.gov/bills/${legislature}/${year}/0/${type}/${number}/?body=${body}`
+})
 
 const fetchBill = async () => {
   loading.value = true
@@ -482,19 +752,232 @@ const removePerson = async (personId) => {
   }
 }
 
+const doRefresh = async () => {
+  refreshing.value = true
+  try {
+    const response = await billsApi.refresh(bill.value.id)
+    bill.value = response.data.bill
+    showSnackbar(['Bill refreshed.'], 'success')
+  } catch (error) {
+    const e = error.response?.data?.errors || ['An unknown error occurred']
+    showSnackbar(e, 'error')
+  } finally {
+    refreshing.value = false
+  }
+}
+
+const doImportAuthors = async () => {
+  importingAuthors.value = true
+  try {
+    const response = await billsApi.importAuthors(bill.value.id)
+    const { added, skipped, errors } = response.data
+    const msgs = []
+    if (added.length)   msgs.push(`Added: ${added.map((p) => p.display_name).join(', ')}`)
+    if (skipped.length) msgs.push(`Already linked: ${skipped.map((p) => p.display_name).join(', ')}`)
+    if (errors.length)  msgs.push(`Errors: ${errors.join('; ')}`)
+    showSnackbar(msgs.length ? msgs : [response.data.message || 'Done.'], 'success')
+    await fetchBill()
+    fetchAvailablePeople()
+  } catch (error) {
+    const e = error.response?.data?.errors || ['An unknown error occurred']
+    showSnackbar(e, 'error')
+  } finally {
+    importingAuthors.value = false
+  }
+}
+
+const doToggleWatch = async () => {
+  toggling.value = true
+  try {
+    if (bill.value.watched_by_current_user) {
+      await billsApi.unwatchBill(bill.value.id)
+      bill.value.watched_by_current_user = false
+      bill.value.watchers_count = Math.max(0, (bill.value.watchers_count || 1) - 1)
+      showSnackbar(['No longer watching this bill.'], 'success')
+    } else {
+      await billsApi.watchBill(bill.value.id)
+      bill.value.watched_by_current_user = true
+      bill.value.watchers_count = (bill.value.watchers_count || 0) + 1
+      showSnackbar(['Now watching this bill.'], 'success')
+    }
+  } catch (error) {
+    const e = error.response?.data?.errors || ['An unknown error occurred']
+    showSnackbar(e, 'error')
+  } finally {
+    toggling.value = false
+  }
+}
+
+const onLinked = async () => {
+  await fetchBill()
+  showSnackbar(['Bill linked to Open States.'], 'success')
+}
+
+const fetchNotes = async () => {
+  notesLoading.value = true
+  try {
+    const response = await billsApi.getNotes(bill.value.id)
+    notes.value = response.data.notes || []
+  } catch (_) { /* silent */ }
+  finally { notesLoading.value = false }
+}
+
+const createNote = async () => {
+  savingNote.value = true
+  try {
+    const response = await billsApi.createNote(bill.value.id, {
+      title:   newNoteTitle.value || null,
+      content: newNoteContent.value,
+    })
+    notes.value.push(response.data.note)
+    notes.value.sort((a, b) => {
+      if (a.pinned === b.pinned) return new Date(b.created_at) - new Date(a.created_at)
+      return a.pinned ? -1 : 1
+    })
+    newNoteTitle.value   = ''
+    newNoteContent.value = ''
+    showSnackbar(['Note added.'], 'success')
+  } catch (error) {
+    const e = error.response?.data?.errors || ['An unknown error occurred']
+    showSnackbar(e, 'error')
+  } finally {
+    savingNote.value = false
+  }
+}
+
+const startEditNote = (note) => {
+  editingNoteId.value   = note.id
+  editNoteTitle.value   = note.title || ''
+  editNoteContent.value = note.content || ''
+}
+
+const cancelEditNote = () => {
+  editingNoteId.value   = null
+  editNoteTitle.value   = ''
+  editNoteContent.value = ''
+}
+
+const saveEditNote = async (noteId) => {
+  savingNote.value = true
+  try {
+    const response = await billsApi.updateNote(bill.value.id, noteId, {
+      title:   editNoteTitle.value || null,
+      content: editNoteContent.value,
+    })
+    const idx = notes.value.findIndex((n) => n.id === noteId)
+    if (idx !== -1) notes.value[idx] = response.data.note
+    cancelEditNote()
+    showSnackbar(['Note updated.'], 'success')
+  } catch (error) {
+    const e = error.response?.data?.errors || ['An unknown error occurred']
+    showSnackbar(e, 'error')
+  } finally {
+    savingNote.value = false
+  }
+}
+
+const deleteNote = async (noteId) => {
+  try {
+    await billsApi.deleteNote(bill.value.id, noteId)
+    notes.value = notes.value.filter((n) => n.id !== noteId)
+    showSnackbar(['Note deleted.'], 'success')
+  } catch (error) {
+    const e = error.response?.data?.errors || ['An unknown error occurred']
+    showSnackbar(e, 'error')
+  }
+}
+
+const doToggleNoteShare = async (note) => {
+  try {
+    const response = note.shared
+      ? await billsApi.unshareNote(bill.value.id, note.id)
+      : await billsApi.shareNote(bill.value.id, note.id)
+    const idx = notes.value.findIndex((n) => n.id === note.id)
+    if (idx !== -1) notes.value[idx] = response.data.note
+    notes.value.sort((a, b) => {
+      if (a.pinned === b.pinned) return new Date(b.created_at) - new Date(a.created_at)
+      return a.pinned ? -1 : 1
+    })
+    showSnackbar([response.data.message], 'success')
+  } catch (error) {
+    const e = error.response?.data?.errors || ['An unknown error occurred']
+    showSnackbar(e, 'error')
+  }
+}
+
+const doToggleNotePin = async (note) => {
+  try {
+    const response = note.pinned
+      ? await billsApi.unpinNote(bill.value.id, note.id)
+      : await billsApi.pinNote(bill.value.id, note.id)
+    const idx = notes.value.findIndex((n) => n.id === note.id)
+    if (idx !== -1) notes.value[idx] = response.data.note
+    // Re-sort: pinned first, then by created_at desc
+    notes.value.sort((a, b) => {
+      if (a.pinned === b.pinned) return new Date(b.created_at) - new Date(a.created_at)
+      return a.pinned ? -1 : 1
+    })
+    showSnackbar([response.data.message], 'success')
+  } catch (error) {
+    const e = error.response?.data?.errors || ['An unknown error occurred']
+    showSnackbar(e, 'error')
+  }
+}
+
+const formatDateTime = (isoString) => {
+  if (!isoString) return ''
+  return new Date(isoString).toLocaleString('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
+  })
+}
+
+const relativeTime = (isoString) => {
+  if (!isoString) return ''
+  const diff = Date.now() - new Date(isoString).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  return `${Math.floor(hrs / 24)}d ago`
+}
+
 onMounted(async () => {
   await fetchBill()
   fetchAvailableIssues()
   fetchAvailableClients()
   fetchAvailablePeople()
+  fetchNotes()
 })
 
 defineExpose({
-  bill, loading, activeTab, editDialogOpen, form,
+  bill, loading, activeTab, editDialogOpen, linkModalOpen, refreshing, toggling, form,
+  notes, notesLoading, savingNote, newNoteTitle, newNoteContent, editingNoteId,
   selectedIssue, selectedClient, selectedPerson,
   availableIssueOptions, availableClientOptions, availablePeopleOptions,
-  fetchBill, openEditDialog, saveEdit,
+  fetchBill, fetchNotes, openEditDialog, saveEdit,
   linkIssue, unlinkIssue, linkClient, unlinkClient, addPerson, removePerson,
+  doRefresh, doToggleWatch, onLinked, relativeTime,
+  createNote, startEditNote, cancelEditNote, saveEditNote, deleteNote, doToggleNoteShare, doToggleNotePin,
   statusColor, chamberColor, formatStatus,
 })
 </script>
+
+<style>
+/* Read-only rendered note HTML */
+.note-content p { margin-bottom: 0.4em; }
+.note-content p:last-child { margin-bottom: 0; }
+.note-content h2 { font-size: 1.2rem; font-weight: 600; margin: 0.8em 0 0.3em; }
+.note-content h3 { font-size: 1rem; font-weight: 600; margin: 0.6em 0 0.25em; }
+.note-content ul, .note-content ol { padding-left: 1.4em; margin-bottom: 0.4em; }
+.note-content li { margin-bottom: 0.15em; }
+.note-content blockquote {
+  border-left: 3px solid rgba(var(--v-border-color), 0.6);
+  padding-left: 1em;
+  margin: 0.4em 0;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+.note-content strong { font-weight: 700; }
+.note-content em { font-style: italic; }
+.note-content s { text-decoration: line-through; }
+</style>

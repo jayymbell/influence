@@ -54,9 +54,28 @@ Rails.application.routes.draw do
   end
 
   resources :bills, only: [:index, :show, :create, :update, :destroy] do
+    collection do
+      get  :search
+      post :import
+    end
+    member do
+      patch :link_external
+      post  :refresh
+      post  :import_authors
+      post   :watch,   to: 'bill_watches#create'
+      delete :unwatch, to: 'bill_watches#destroy'
+    end
     resources :issues,  only: [:index, :create, :destroy], controller: 'bill_issues'
     resources :clients, only: [:index, :create, :destroy], controller: 'bill_clients'
     resources :people,  only: [:index, :create, :destroy], controller: 'bill_people'
+    resources :notes, only: [:index, :show, :create, :update, :destroy], controller: 'bill_notes' do
+      member do
+        patch :share
+        patch :unshare
+        patch :pin
+        patch :unpin
+      end
+    end
   end
 
   post 'invitations/accept', to: 'invitations#accept'

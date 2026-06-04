@@ -71,11 +71,31 @@ class BillSerializer
     bill.bill_people.size
   end
 
+  attribute :actions do |bill|
+    bill.bill_actions.map do |a|
+      {
+        id:             a.id,
+        action_date:    a.action_date,
+        description:    a.description,
+        classification: a.classification
+      }
+    end
+  end
+
   attribute :created_by do |bill|
     bill.created_by ? { id: bill.created_by.id, email: bill.created_by.email } : nil
   end
 
   attribute :updated_by do |bill|
     bill.updated_by ? { id: bill.updated_by.id, email: bill.updated_by.email } : nil
+  end
+
+  attribute :watched_by_current_user do |bill, params|
+    next false unless params[:current_user]
+    BillWatch.exists?(user_id: params[:current_user].id, bill_id: bill.id)
+  end
+
+  attribute :watchers_count do |bill|
+    bill.bill_watches.size
   end
 end

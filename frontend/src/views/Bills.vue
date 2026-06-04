@@ -5,6 +5,7 @@
         <h1>Bills</h1>
       </v-col>
       <v-col class="text-right">
+        <v-btn variant="outlined" class="mr-2" @click="searchModalOpen = true">Search Open States</v-btn>
         <v-btn color="primary" @click="openCreateDialog">New Bill</v-btn>
       </v-col>
     </v-row>
@@ -65,8 +66,7 @@
       >
         <v-row align="center">
           <v-col>
-            <strong>{{ bill.title }}</strong>
-            <span v-if="bill.bill_number" class="text-medium-emphasis ml-2 text-body-2">{{ bill.bill_number }}</span>
+            <span v-if="bill.bill_number" class="text-high-emphasis font-weight-bold mr-2">{{ bill.bill_number }}</span><span class="text-medium-emphasis">{{ bill.title }}</span>
             <div class="mt-1">
               <v-chip
                 size="x-small"
@@ -153,6 +153,9 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Open States import modal -->
+    <BillSearchModal v-model="searchModalOpen" mode="import" />
   </v-container>
 </template>
 
@@ -160,9 +163,11 @@
 import { onMounted, ref, inject } from 'vue'
 import { debounce } from 'lodash'
 import billsApi from '../services/bills.js'
+import BillSearchModal from '../components/BillSearchModal.vue'
 
 const bills = ref([])
 const loading = ref(false)
+const searchModalOpen = ref(false)
 const searchQuery = ref('')
 const statusFilter = ref(null)
 const chamberFilter = ref(null)
@@ -288,7 +293,7 @@ onMounted(fetchBills)
 
 defineExpose({
   bills, loading, searchQuery, statusFilter, chamberFilter, sessionYearFilter,
-  dialogOpen, editTarget, form, fetchBills, debouncedSearch, onClearSearch,
+  dialogOpen, editTarget, form, searchModalOpen, fetchBills, debouncedSearch, onClearSearch,
   openCreateDialog, openEditDialog, closeDialog, createBill, updateBill,
   statusColor, chamberColor, formatStatus,
 })

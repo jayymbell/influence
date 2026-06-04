@@ -18,6 +18,7 @@ import Issues from '../views/Issues.vue'
 import IssueShow from '../views/IssueShow.vue'
 import Bills from '../views/Bills.vue'
 import BillShow from '../views/BillShow.vue'
+import BillNoteShow from '../views/BillNoteShow.vue'
 import AccountSetup from '../views/AccountSetup.vue'
 import InviteAccept from '../views/InviteAccept.vue'
 
@@ -225,6 +226,19 @@ const routes = [
     path: '/bills/:id',
     name: 'BillShow',
     component: BillShow,
+    beforeEnter: (to, from, next) => {
+      const userStore = useUserStore()
+      if (userStore.isLoggedIn && (userStore.hasRole('admin') || userStore.hasRole('staff') || userStore.hasRole('manager'))) {
+        next()
+      } else {
+        next({ name: 'Dashboard' })
+      }
+    }
+  },
+  {
+    path: '/bills/:billId/notes/:noteId',
+    name: 'BillNoteShow',
+    component: BillNoteShow,
     beforeEnter: (to, from, next) => {
       const userStore = useUserStore()
       if (userStore.isLoggedIn && (userStore.hasRole('admin') || userStore.hasRole('staff') || userStore.hasRole('manager'))) {

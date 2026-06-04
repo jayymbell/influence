@@ -32,6 +32,7 @@
         <v-tab value="contacts">Contacts</v-tab>
         <v-tab value="staff">Staff</v-tab>
         <v-tab value="issues">Issues</v-tab>
+        <v-tab value="bills">Bills</v-tab>
       </v-tabs>
 
       <v-divider />
@@ -145,16 +146,56 @@
             <p v-else class="text-medium-emphasis mt-4">No issues found for this client.</p>
           </template>
         </v-window-item>
+
+        <!-- Bills tab -->
+        <v-window-item value="bills">
+          <template v-if="billsLoading">
+            <v-skeleton-loader v-for="n in 4" :key="n" type="list-item" class="mb-2" />
+          </template>
+          <template v-else>
+            <v-table v-if="clientBills.length" hover>
+              <thead>
+                <tr>
+                  <th>Number</th>
+                  <th>Title</th>
+                  <th>Status</th>
+                  <th>Issue</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="bill in clientBills" :key="bill.id">
+                  <td class="text-no-wrap">{{ bill.bill_number || '—' }}</td>
+                  <td>{{ bill.title }}</td>
+                  <td>
+                    <v-chip size="x-small" :color="billStatusColor(bill.status)" variant="tonal">{{ bill.status }}</v-chip>
+                  </td>
+                  <td>
+                    <span v-if="bill.via_issue">
+                      <v-btn variant="text" size="small" class="pa-0" :to="{ name: 'IssueShow', params: { id: bill.via_issue.id } }">{{ bill.via_issue.title }}</v-btn>
+                    </span>
+                    <span v-else class="text-medium-emphasis">—</span>
+                  </td>
+                  <td class="text-right">
+                    <v-btn variant="text" size="small" :to="{ name: 'BillShow', params: { id: bill.id } }">View</v-btn>
+                  </td>
+                </tr>
+              </tbody>
+            </v-table>
+            <p v-else class="text-medium-emphasis mt-4">No bills found for this client.</p>
+          </template>
+        </v-window-item>
       </v-window>
     </template>
   </v-container>
 </template>
 
 <script setup>
-import { onMounted, ref, inject } from 'vue'
+import { onMounted, ref, inject, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '../services/api.js'
 import issuesApi from '../services/issues.js'
+import billsApi from '../services/bills.js'
 import useUserStore from '../stores/UserStore.js'
 
 const route = useRoute()
@@ -174,6 +215,23 @@ const selectedStaff = ref(null)
 const activeTab = ref('contacts')
 const clientIssues = ref([])
 const issuesLoading = ref(false)
+const directBills = ref([])
+const billsLoading = ref(false)
+
+const clientBills = computed(() => {
+  const seen = new Map()
+  for (const bill of directBills.value) {
+    seen.set(bill.id, { ...bill, via_issue: null })
+  }
+  for (const issue of clientIssues.value) {
+    for (const bill of (issue.bills || [])) {
+      if (!seen.has(bill.id)) {
+        seen.set(bill.id, { ...bill, via_issue: { id: issue.id, title: issue.title } })
+      }
+    }
+  }
+  return [...seen.values()]
+})
 
 const fetchClient = async () => {
   loading.value = true
@@ -265,9 +323,29 @@ const fetchIssues = async () => {
   }
 }
 
+const fetchBills = async () => {
+  billsLoading.value = true
+  try {
+    const response = await billsApi.getAll({ client_id: route.params.id })
+    directBills.value = response.data.bills
+  } catch (error) {
+    const e = error.response?.data?.errors || ['An unknown error occurred']
+    showSnackbar(e, 'error')
+  } finally {
+    billsLoading.value = false
+  }
+}
+
 const issueStatusColor = (status) => {
   if (status === 'active')   return 'success'
   if (status === 'inactive') return 'warning'
+  return 'default'
+}
+
+const billStatusColor = (status) => {
+  if (status === 'signed')   return 'success'
+  if (status === 'vetoed' || status === 'failed') return 'error'
+  if (status === 'introduced' || status === 'in_committee') return 'info'
   return 'default'
 }
 
@@ -276,6 +354,7 @@ onMounted(async () => {
   fetchPeople()
   fetchStaff()
   fetchIssues()
+  fetchBills()
   if (canManageStaff) fetchAvailableStaff()
 })
 
@@ -283,6 +362,7 @@ defineExpose({
   client, loading, people, peopleLoading, activeTab, fetchClient, fetchPeople,
   staff, staffLoading, availableStaffOptions, selectedStaff, canManageStaff,
   fetchStaff, fetchAvailableStaff, addStaff, removeStaff,
-  clientIssues, issuesLoading, fetchIssues, issueStatusColor
+  clientIssues, issuesLoading, fetchIssues, issueStatusColor,
+  directBills, billsLoading, clientBills, fetchBills, billStatusColor
 })
 </script>
