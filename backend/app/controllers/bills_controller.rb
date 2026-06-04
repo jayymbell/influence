@@ -2,7 +2,7 @@
 
 class BillsController < ApplicationController
   before_action :authenticate_user!
-  before_action :set_bill, only: %i[show update destroy link_external refresh import_authors]
+  before_action :set_bill, only: %i[show update destroy link_external refresh]
 
   rescue_from BillImportService::ExternalError do |e|
     render_error(errors: [ e.message ], message: "External service error.", status: :bad_gateway)
@@ -139,23 +139,8 @@ class BillsController < ApplicationController
       return render_error(errors: [ "Bill is not linked to an external record" ], message: "Refresh failed.")
     end
 
-    bill = BillImportService.refresh(bill: @bill)
+    bill = BillImportService.refresh(bill: @bill, created_by: current_user)
     render_success(data: { bill: bill_data(bill) }, message: "Bill refreshed.")
-  end
-
-  # POST /bills/:id/import_authors
-  def import_authors
-    authorize @bill, :import_authors?
-
-    result = BillImportService.scrape_authors(bill: @bill, created_by: current_user)
-    render_success(
-      data: {
-        added:   result[:added].map   { |p| { id: p.id, display_name: p.display_name } },
-        skipped: result[:skipped].map { |p| { id: p.id, display_name: p.display_name } },
-        errors:  result[:errors]
-      },
-      message: "Authors imported: #{result[:added].size} added, #{result[:skipped].size} already linked."
-    )
   end
 
   private

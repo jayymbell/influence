@@ -188,6 +188,10 @@ RSpec.describe BillImportService do
   describe ".import" do
     let(:user) { create(:user, :admin) }
 
+    before do
+      allow(BillImportService).to receive(:scrape_authors).and_return({ added: [], skipped: [], errors: [] })
+    end
+
     it "creates a new local Bill from Open States data" do
       stub_open_states_fetch(external_id: "ocd-bill/1")
 
@@ -246,11 +250,34 @@ RSpec.describe BillImportService do
       expect(bill.bill_actions.count).to eq 1
       expect(bill.bill_actions.first.description).to eq "Introduced in House"
     end
+
+    it "attempts to scrape authors after creating the bill" do
+      stub_open_states_fetch(external_id: "ocd-bill/1")
+      expect(BillImportService).to receive(:scrape_authors).with(bill: anything, created_by: user)
+        .and_return({ added: [], skipped: [], errors: [] })
+
+      BillImportService.import(external_id: "ocd-bill/1", created_by: user)
+    end
+
+    it "does not fail import when author scraping raises ExternalError" do
+      stub_open_states_fetch(external_id: "ocd-bill/1")
+      allow(BillImportService).to receive(:scrape_authors)
+        .and_raise(BillImportService::ExternalError, "No authors found")
+
+      bill, status = BillImportService.import(external_id: "ocd-bill/1", created_by: user)
+      expect(bill).to be_persisted
+      expect(status).to eq :created
+    end
   end
 
   # -------------------------------------------------------------------------
   describe ".refresh" do
+    let(:user) { create(:user, :admin) }
     let(:bill) { create(:bill, external_id: "ocd-bill/1", description: "old description", notes: "kept", tags: ["kept"], status: :signed) }
+
+    before do
+      allow(BillImportService).to receive(:scrape_authors).and_return({ added: [], skipped: [], errors: [] })
+    end
 
     it "updates mapped fields from Open States" do
       stub_open_states_fetch(
@@ -268,7 +295,7 @@ RSpec.describe BillImportService do
         }
       )
 
-      refreshed = BillImportService.refresh(bill: bill)
+      refreshed = BillImportService.refresh(bill: bill, created_by: user)
 
       expect(refreshed.bill_number).to eq "HF 101"
       expect(refreshed.title).to eq "Updated Title"
@@ -298,14 +325,14 @@ RSpec.describe BillImportService do
       )
       stub_revisor(status: 500)
 
-      refreshed = BillImportService.refresh(bill: bill)
+      refreshed = BillImportService.refresh(bill: bill, created_by: user)
       expect(refreshed.status).to eq "signed"
     end
 
     it "does NOT overwrite notes, tags, or companion_bill_id" do
       stub_open_states_fetch(external_id: "ocd-bill/1")
 
-      refreshed = BillImportService.refresh(bill: bill)
+      refreshed = BillImportService.refresh(bill: bill, created_by: user)
 
       expect(refreshed.notes).to eq "kept"
       expect(refreshed.tags).to eq ["kept"]
@@ -314,8 +341,25 @@ RSpec.describe BillImportService do
     it "raises ExternalError if bill has no external_id" do
       unlinked_bill = create(:bill)
       expect {
-        BillImportService.refresh(bill: unlinked_bill)
+        BillImportService.refresh(bill: unlinked_bill, created_by: user)
       }.to raise_error(BillImportService::ExternalError, /not linked/)
+    end
+
+    it "attempts to scrape authors after refreshing the bill" do
+      stub_open_states_fetch(external_id: "ocd-bill/1")
+      expect(BillImportService).to receive(:scrape_authors).with(bill: bill, created_by: user)
+        .and_return({ added: [], skipped: [], errors: [] })
+
+      BillImportService.refresh(bill: bill, created_by: user)
+    end
+
+    it "does not fail refresh when author scraping raises ExternalError" do
+      stub_open_states_fetch(external_id: "ocd-bill/1")
+      allow(BillImportService).to receive(:scrape_authors)
+        .and_raise(BillImportService::ExternalError, "No authors found")
+
+      refreshed = BillImportService.refresh(bill: bill, created_by: user)
+      expect(refreshed).to be_persisted
     end
   end
 

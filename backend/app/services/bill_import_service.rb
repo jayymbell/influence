@@ -117,6 +117,11 @@ class BillImportService
     end
 
     sync_actions(bill: bill, raw_actions: attrs[:raw_actions])
+    begin
+      scrape_authors(bill: bill, created_by: created_by)
+    rescue StandardError => e
+      Rails.logger.warn "[BillImportService] Author scrape skipped on import for bill #{bill.id}: #{e.message}"
+    end
     [ bill, :created ]
   end
 
@@ -125,7 +130,7 @@ class BillImportService
   #
   # @param bill [Bill] must have external_id set
   # @raise [ExternalError] if bill has no external_id
-  def self.refresh(bill:)
+  def self.refresh(bill:, created_by:)
     raise ExternalError, "Bill is not linked to an external record" if bill.external_id.blank?
 
     attrs = fetch(external_id: bill.external_id)
@@ -145,6 +150,11 @@ class BillImportService
     end
 
     sync_actions(bill: bill, raw_actions: attrs[:raw_actions])
+    begin
+      scrape_authors(bill: bill, created_by: created_by)
+    rescue StandardError => e
+      Rails.logger.warn "[BillImportService] Author scrape skipped on refresh for bill #{bill.id}: #{e.message}"
+    end
     bill
   end
 

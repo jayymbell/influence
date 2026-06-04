@@ -90,10 +90,6 @@ const billsApi = {
     return api.post(`/bills/${id}/refresh`)
   },
 
-  importAuthors(id) {
-    return api.post(`/bills/${id}/import_authors`)
-  },
-
   watchBill(id) {
     return api.post(`/bills/${id}/watch`)
   },
