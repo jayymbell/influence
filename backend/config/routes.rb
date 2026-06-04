@@ -61,7 +61,6 @@ Rails.application.routes.draw do
     member do
       patch :link_external
       post  :refresh
-      post  :import_authors
       post   :watch,   to: 'bill_watches#create'
       delete :unwatch, to: 'bill_watches#destroy'
     end
